@@ -1,0 +1,3 @@
+add_executable(eightbits_tests test_eightbits.c)
+target_link_libraries(eightbits_tests PRIVATE eightbits)
+add_test(NAME EightBitsUnitTests COMMAND eightbits_tests)
