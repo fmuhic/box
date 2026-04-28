@@ -1,7 +1,8 @@
 #pragma once
 
-#define B8_DECLARE_ADD(T)                                                                                              \
-    T b8_add(T a, T b)                                                                                                 \
+#define BX_DECLARE_ADD(T)                                                                                              \
+    T bx_add(T a, T b)                                                                                                 \
     {                                                                                                                  \
         return a + b;                                                                                                  \
     }                                                                                                                  \
+

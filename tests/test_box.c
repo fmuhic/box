@@ -1,11 +1,11 @@
 #include "stdio.h"
-#include "b8/hmap.h"
+#include "box/hmap.h"
 
-B8_DECLARE_ADD(int);
+BX_DECLARE_ADD(int);
 
 int main()
 {
-    int result = b8_add(3, 2);
+    int result = bx_add(3, 2);
     printf("Sum is %i", result);
     return 0;
 }
