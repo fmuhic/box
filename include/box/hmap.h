@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "box/core.h"
+
 #define BX_HMAP_MAX_LOAD_FACTOR 0.80f
 #define BX_HMAP_DIST_MASK 0x3ffU
 
@@ -49,7 +51,7 @@ typedef struct bx_hmap_meta
     void bx_hmap_##NAME##_erase(bx_hmap_##NAME* map, K key);                                                           \
     V* bx_hmap_##NAME##_get(const bx_hmap_##NAME* map, K key);
 
-#define BX_HMAP_SOURCE(K, V, NAME, BX_HASH_FN, BX_EQUALITY_FN)                                                         \
+#define BX_HMAP_SOURCE_INTERNAL(K, V, NAME, BX_HASH_FN, BX_EQUALITY_FN, ALLOC_FN, FREE_FN)                             \
     static size_t bx_hmap_##NAME##_find_bucket(const bx_hmap_##NAME* map, K key, bool* found)                          \
     {                                                                                                                  \
         if (map->bucket_count == 0) { *found = false; return 0; }                                                      \
@@ -86,8 +88,8 @@ typedef struct bx_hmap_meta
     }                                                                                                                  \
                                                                                                                        \
     void bx_hmap_##NAME##_drop(bx_hmap_##NAME* map) {                                                                  \
-        free(map->table);                                                                                              \
-        free(map->meta);                                                                                               \
+        FREE_FN(map->table);                                                                                           \
+        FREE_FN(map->meta);                                                                                            \
         memset(map, 0, sizeof(bx_hmap_##NAME));                                                                        \
     }                                                                                                                  \
                                                                                                                        \
@@ -98,8 +100,10 @@ typedef struct bx_hmap_meta
                                                                                                                        \
         bx_hmap_##NAME old = *map;                                                                                     \
         map->bucket_count = new_bucks;                                                                                 \
-        map->table = (bx_hmap_##NAME##_entry*) calloc(new_bucks, sizeof(bx_hmap_##NAME##_entry));                      \
-        map->meta = (bx_hmap_meta*)calloc(new_bucks + 1, sizeof(bx_hmap_meta));                                        \
+        map->table = (bx_hmap_##NAME##_entry*) ALLOC_FN(new_bucks * sizeof(bx_hmap_##NAME##_entry));                   \
+        memset(map->table, 0, new_bucks * sizeof(bx_hmap_##NAME##_entry));                                             \
+        map->meta = (bx_hmap_meta*) ALLOC_FN((new_bucks + 1) * sizeof(bx_hmap_meta));                                  \
+        memset(map->meta, 0, (new_bucks + 1) * sizeof(bx_hmap_meta));                                                  \
         map->size = 0;                                                                                                 \
                                                                                                                        \
         /* Sentinel value at the end of meta to prevent overflow during probing. */                                    \
@@ -112,8 +116,8 @@ typedef struct bx_hmap_meta
             }                                                                                                          \
         }                                                                                                              \
                                                                                                                        \
-        free(old.table);                                                                                               \
-        free(old.meta);                                                                                                \
+        FREE_FN(old.table);                                                                                            \
+        FREE_FN(old.meta);                                                                                             \
     }                                                                                                                  \
                                                                                                                        \
     void bx_hmap_##NAME##_insert(bx_hmap_##NAME* map, K key, V value) {                                                \
@@ -185,3 +189,15 @@ typedef struct bx_hmap_meta
         map->meta[i].dist = 0; /* Mark the final shifted slot as empty. */                                             \
         map->size--;                                                                                                   \
     }
+
+
+// This allows us to call BX_HMAP_SOURCE with extra alloc and free arguments
+#define BX_HMAP_SOURCE_5(K, V, NAME, HASH, EQ)                                                                         \
+    BX_HMAP_SOURCE_INTERNAL(K, V, NAME, HASH, EQ, bx_alloc, bx_free)
+
+#define BX_HMAP_SOURCE_7(K, V, NAME, HASH, EQ, ALLOC_FN, FREE_FN)                                                      \
+    BX_HMAP_SOURCE_INTERNAL(K, V, NAME, HASH, EQ, ALLOC_FN, FREE_FN)
+
+#define BX_HMAP_SOURCE_GET_MACRO(_1, _2, _3, _4, _5, _6, _7, NAME, ...) NAME
+#define BX_HMAP_SOURCE(...)                                                                                            \
+    BX_HMAP_SOURCE_GET_MACRO(__VA_ARGS__, BX_HMAP_SOURCE_7, BX_HMAP_SOURCE_6_UNUSED, BX_HMAP_SOURCE_5)(__VA_ARGS__)

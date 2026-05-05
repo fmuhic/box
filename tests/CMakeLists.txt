@@ -1,6 +1,7 @@
 add_executable(box_tests 
     test_box.c 
     hmap/test_hmap.c
+    darray/test_darray.c
 )
 
 target_include_directories(box_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

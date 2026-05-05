@@ -274,11 +274,9 @@ static bool eq_str(const char* a, const char* b) {
     return strcmp(a, b) == 0;
 }
 
-// 1. We use the i32 hash/equality because the KEY is now int32_t
 BX_HMAP_DECLARE(int32_t, vec3, i32v3)
 BX_HMAP_SOURCE(int32_t, vec3, i32v3, hash_i32, eq_i32)
 
-// 2. Keeping the String -> Entity map as well
 BX_HMAP_DECLARE(const char*, Entity, str_ent)
 BX_HMAP_SOURCE(const char*, Entity, str_ent, hash_str, eq_str)
 
@@ -328,7 +326,58 @@ void test_hamp_complex_structures() {
     bx_hmap_str_ent_drop(&name_to_ent);
 }
 
+// Allocator mock
+static int g_alloc_count = 0;
+static int g_free_count = 0;
+
+static void* my_custom_alloc(size_t size) {
+    g_alloc_count++;
+    return malloc(size);
+}
+
+static void my_custom_free(void* ptr) {
+    if (ptr) {
+        g_free_count++;
+        free(ptr);
+    }
+}
+
+BX_HMAP_DECLARE(int32_t, int32_t, custom_test)
+BX_HMAP_SOURCE(int32_t, int32_t, custom_test, hash_i32, eq_i32, my_custom_alloc, my_custom_free)
+
+void test_hmap_custom_allocator_logic() {
+    printf("Running: test_hmap_custom_allocator_logic\n");
+
+    g_alloc_count = 0;
+    g_free_count = 0;
+
+    bx_hmap_custom_test map;
+    bx_hmap_custom_test_init(&map);
+
+    assert(map.size == 0);
+    assert(map.bucket_count == 0);
+
+    for (int32_t i = 0; i < 20; i++) {
+        bx_hmap_custom_test_insert(&map, i, i * 10);
+    }
+
+    assert(g_alloc_count > 0);
+    assert(map.size == 20);
+
+    for (int32_t i = 0; i < 20; i++) {
+        int32_t* val = bx_hmap_custom_test_get(&map, i);
+        assert(val != NULL && *val == i * 10);
+    }
+
+    bx_hmap_custom_test_drop(&map);
+
+    assert(g_free_count > 0);
+    assert(map.table == NULL);
+    assert(map.meta == NULL);
+}
+
 void run_hmap_tests() {
+    printf("\n--- Starting hmap tests ---\n");
     test_hmap_pow2_logic();
     test_hmap_basic_ops();
     test_hmap_collisions_and_erasure();
@@ -339,4 +388,6 @@ void run_hmap_tests() {
     test_hmap_deep_backward_shift();
     test_hmap_empty_map_queries();
     test_hamp_complex_structures();
+    test_hmap_custom_allocator_logic();
+    printf("--- hmap tests passed ---\n\n");
 }

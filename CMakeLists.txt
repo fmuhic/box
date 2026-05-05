@@ -5,10 +5,22 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_library(box INTERFACE)
+set(BOX_SOURCES
+    src/box/core.c
+)
 
-# Add the current directory (.) to the include path for this target
-target_include_directories(box INTERFACE 
+set(BOX_HEADERS
+    include/box/core.h
+    include/box/darray.h
+    include/box/hmap.h
+)
+
+add_library(box STATIC 
+    ${BOX_SOURCES}
+    ${BOX_HEADERS}
+)
+
+target_include_directories(box PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
