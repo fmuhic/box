@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -10,18 +9,6 @@
 
 #define BX_HMAP_MAX_LOAD_FACTOR 0.80f
 #define BX_HMAP_DIST_MASK 0x3ffU
-
-static inline size_t next_pow2(size_t x)
-{
-    x--;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    x |= x >> 32;
-    return x + 1;
-}
 
 typedef struct bx_hmap_meta
 {
@@ -95,7 +82,7 @@ typedef struct bx_hmap_meta
                                                                                                                        \
     void bx_hmap_##NAME##_reserve(bx_hmap_##NAME* map, size_t capacity) {                                              \
         size_t new_bucks = (size_t)((float)capacity / BX_HMAP_MAX_LOAD_FACTOR) + 4;                                    \
-        new_bucks = next_pow2(new_bucks);                                                                              \
+        new_bucks = bx_next_pow2(new_bucks);                                                                              \
         if (new_bucks <= map->bucket_count) return;                                                                    \
                                                                                                                        \
         bx_hmap_##NAME old = *map;                                                                                     \

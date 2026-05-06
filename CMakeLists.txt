@@ -7,12 +7,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(BOX_SOURCES
     src/box/core.c
+    src/box/bitset.c
 )
 
 set(BOX_HEADERS
     include/box/core.h
     include/box/darray.h
     include/box/hmap.h
+    include/box/bitset.h
 )
 
 add_library(box STATIC 

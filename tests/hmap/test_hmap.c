@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#include "box/core.h"
 #include "box/hmap.h"
 
 static uint64_t hash_i32(int32_t key) {
@@ -22,11 +23,11 @@ BX_HMAP_SOURCE(int32_t, float, i32f32, hash_i32, eq_i32)
 
 void test_hmap_pow2_logic() {
     printf("Running: test_hmap_pow2_logic\n");
-    assert(next_pow2(0) == 0);
-    assert(next_pow2(1) == 1);
-    assert(next_pow2(7) == 8);
-    assert(next_pow2(8) == 8);
-    assert(next_pow2(9) == 16);
+    assert(bx_next_pow2(0) == 1);
+    assert(bx_next_pow2(1) == 1);
+    assert(bx_next_pow2(7) == 8);
+    assert(bx_next_pow2(8) == 8);
+    assert(bx_next_pow2(9) == 16);
 }
 
 void test_hmap_basic_ops() {
@@ -332,13 +333,13 @@ static int g_free_count = 0;
 
 static void* my_custom_alloc(size_t size) {
     g_alloc_count++;
-    return malloc(size);
+    return bx_alloc(size);
 }
 
 static void my_custom_free(void* ptr) {
     if (ptr) {
         g_free_count++;
-        free(ptr);
+        bx_free(ptr);
     }
 }
 
