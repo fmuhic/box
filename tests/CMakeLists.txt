@@ -3,6 +3,7 @@ add_executable(box_tests
     hmap/test_hmap.c
     darray/test_darray.c
     bitset/test_bitset.c
+    spset/test_spset.c
 )
 
 target_include_directories(box_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

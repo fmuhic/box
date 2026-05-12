@@ -15,6 +15,7 @@ set(BOX_HEADERS
     include/box/darray.h
     include/box/hmap.h
     include/box/bitset.h
+    include/box/spset.h
 )
 
 add_library(box STATIC 

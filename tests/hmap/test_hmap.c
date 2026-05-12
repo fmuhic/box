@@ -176,7 +176,6 @@ static void test_hmap_minihash_collision() {
 
     // We need two keys that have different values but produce 
     // the same bits 24-29 in their hash.
-    // Given your hash function: x = (x ^ (x >> 30)) * CONST...
     // We can just brute force two keys that collide on the mini_hash bits.
     int32_t k1 = 1;
     uint8_t target_mini = (uint8_t)((hash_i32(k1) >> 24) & 0x3fU);
