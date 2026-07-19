@@ -141,9 +141,36 @@ void test_darray_emplace()
     bx_darray_ent_drop(&entities);
 }
 
+void test_darray_init_capacity()
+{
+    printf("Running: test_darray_init_capacity\n");
+    bx_darray_i32 arr;
+
+    // Capacity is honoured exactly, never rounded up to a power of 2
+    bx_darray_i32_init_capacity(&arr, 100);
+    assert(arr.base.capacity == 100);
+    assert(arr.base.size == 0);
+
+    // Filling up to the reserved capacity must not reallocate
+    for (int i = 0; i < 100; i++)
+    {
+        bx_darray_i32_push(&arr, i);
+    }
+    assert(arr.base.size == 100);
+    assert(arr.base.capacity == 100);
+
+    // Going past it resumes normal doubling
+    bx_darray_i32_push(&arr, 100);
+    assert(arr.base.capacity == 200);
+    assert(*bx_darray_i32_get(&arr, 100) == 100);
+
+    bx_darray_i32_drop(&arr);
+}
+
 void run_darray_tests()
 {
     printf("\n--- Starting darray tests ---\n");
+    test_darray_init_capacity();
     test_darray_basic_ops();
     test_darray_growth();
     test_darray_remove_swap();

@@ -38,21 +38,17 @@ void test_hmap_basic_ops()
     bx_hmap_i32f32 map;
     bx_hmap_i32f32_init(&map);
 
-    // Insert
     bx_hmap_i32f32_insert(&map, 10, 100.5f);
     bx_hmap_i32f32_insert(&map, 20, 200.5f);
     assert(map.base.size == 2);
 
-    // Get
     float* v1 = bx_hmap_i32f32_get(&map, 10);
     assert(v1 != NULL && *v1 == 100.5f);
 
-    // Update existing
     bx_hmap_i32f32_insert(&map, 10, 500.0f);
     assert(map.base.size == 2);
     assert(*bx_hmap_i32f32_get(&map, 10) == 500.0f);
 
-    // Non-existent
     assert(bx_hmap_i32f32_get(&map, 99) == NULL);
 
     bx_hmap_i32f32_drop(&map);
@@ -64,16 +60,13 @@ void test_hmap_collisions_and_erasure()
     bx_hmap_i32f32 map;
     bx_hmap_i32f32_init(&map);
 
-    // Force a small table to guarantee collisions
     bx_hmap_i32f32_reserve(&map, 4);
 
-    // Insert several keys. Robin Hood will shift them.
     for (int i = 0; i < 6; i++)
     {
         bx_hmap_i32f32_insert(&map, i, (float)i * 1.1f);
     }
 
-    // Verify all present
     for (int i = 0; i < 6; i++)
     {
         float* val = bx_hmap_i32f32_get(&map, i);
@@ -105,8 +98,8 @@ void test_hmap_stress_resize()
         bx_hmap_i32f32_insert(&map, i, (float)i);
     }
 
-    assert(map.base.size == (size_t)count);
-    assert(map.base.bucket_count > (size_t)count);
+    assert(bx_hmap_i32f32_size(&map) == (uint32_t)count);
+    assert(bx_hmap_i32f32_bucket_count(&map) > (uint32_t)count);
 
     for (int i = 0; i < count; i++)
     {
@@ -118,12 +111,11 @@ void test_hmap_stress_resize()
         }
     }
 
-    // Erase half
     for (int i = 0; i < count / 2; i++)
     {
         bx_hmap_i32f32_erase(&map, i);
     }
-    assert(map.base.size == (size_t)count / 2);
+    assert(bx_hmap_i32f32_size(&map) == (uint32_t)count / 2);
 
     bx_hmap_i32f32_drop(&map);
 }
@@ -134,9 +126,8 @@ void test_hmap_wrap_around()
     bx_hmap_i32f32 map;
     bx_hmap_i32f32_init(&map);
 
-    // Force a small size
     bx_hmap_i32f32_reserve(&map, 4);
-    size_t count = map.base.bucket_count;
+    uint32_t count = bx_hmap_i32f32_bucket_count(&map);
 
     // Find a key that hashes to the very last bucket
     int32_t last_key = 0;
@@ -313,10 +304,8 @@ void test_hamp_complex_structures()
     int32_t entity_id = 1024;
     vec3 target_pos = { 10.0f, 20.0f, 30.0f };
 
-    // Store position by ID
     bx_hmap_i32v3_insert(&id_to_pos, entity_id, target_pos);
 
-    // Retrieve and verify
     vec3* found_pos = bx_hmap_i32v3_get(&id_to_pos, entity_id);
     assert(found_pos != NULL);
     assert(found_pos->x == 10.0f && found_pos->y == 20.0f && found_pos->z == 30.0f);
@@ -331,7 +320,6 @@ void test_hamp_complex_structures()
     Entity npc = { .name = "Merchant", .position = { 5.0f, 0.0f, 5.0f } };
     bx_hmap_str_ent_insert(&name_to_ent, npc.name, npc);
 
-    // Verification
     Entity* found_npc = bx_hmap_str_ent_get(&name_to_ent, "Merchant");
     assert(found_npc != NULL);
     assert(found_npc->position.x == 5.0f);
@@ -342,16 +330,81 @@ void test_hamp_complex_structures()
     bx_hmap_str_ent_insert(&name_to_ent, "Merchant", npc);
     assert(bx_hmap_str_ent_get(&name_to_ent, "Merchant")->position.z == 50.0f);
 
-    // Erase
     bx_hmap_str_ent_erase(&name_to_ent, "Merchant");
     assert(bx_hmap_str_ent_get(&name_to_ent, "Merchant") == NULL);
 
     bx_hmap_str_ent_drop(&name_to_ent);
 }
 
+void test_hmap_init_capacity()
+{
+    printf("Running: test_hmap_init_capacity\n");
+    bx_hmap_i32f32 map;
+
+    // capacity counts elements: 100 / 0.80 + 4 = 129, rounded up to 256 buckets
+    bx_hmap_i32f32_init_capacity(&map, 100);
+    assert(bx_hmap_i32f32_bucket_count(&map) == 256);
+    assert(bx_hmap_i32f32_size(&map) == 0);
+
+    // Filling to the requested capacity must not rehash
+    for (int32_t i = 0; i < 100; i++)
+    {
+        bx_hmap_i32f32_insert(&map, i, (float)i);
+    }
+    assert(bx_hmap_i32f32_size(&map) == 100);
+    assert(bx_hmap_i32f32_bucket_count(&map) == 256);
+    assert(*bx_hmap_i32f32_get(&map, 42) == 42.0f);
+
+    bx_hmap_i32f32_drop(&map);
+}
+
+void test_hmap_clear_reuses_buckets()
+{
+    printf("Running: test_hmap_clear_reuses_buckets\n");
+    bx_hmap_i32f32 map;
+    bx_hmap_i32f32_init(&map);
+
+    for (int32_t i = 0; i < 50; i++)
+    {
+        bx_hmap_i32f32_insert(&map, i, (float)i);
+    }
+    uint32_t buckets = bx_hmap_i32f32_bucket_count(&map);
+
+    bx_hmap_i32f32_clear(&map);
+    assert(bx_hmap_i32f32_size(&map) == 0);
+    assert(bx_hmap_i32f32_bucket_count(&map) == buckets); // allocation kept
+    assert(bx_hmap_i32f32_get(&map, 10) == NULL);
+    assert(!bx_hmap_i32f32_contains(&map, 10));
+
+    // Reinserting after a clear must behave exactly as on a fresh map.
+    // If clear dropped the meta[bucket_count] probe guard, this is where it shows.
+    for (int32_t i = 0; i < 50; i++)
+    {
+        bx_hmap_i32f32_insert(&map, i + 1000, (float)i);
+    }
+    assert(bx_hmap_i32f32_size(&map) == 50);
+    for (int32_t i = 0; i < 50; i++)
+    {
+        assert(bx_hmap_i32f32_contains(&map, i + 1000));
+        assert(*bx_hmap_i32f32_get(&map, i + 1000) == (float)i);
+        assert(!bx_hmap_i32f32_contains(&map, i));
+    }
+
+    // Clearing an untouched map is a no-op, not a crash
+    bx_hmap_i32f32 fresh;
+    bx_hmap_i32f32_init(&fresh);
+    bx_hmap_i32f32_clear(&fresh);
+    assert(bx_hmap_i32f32_size(&fresh) == 0);
+    bx_hmap_i32f32_drop(&fresh);
+
+    bx_hmap_i32f32_drop(&map);
+}
+
 void run_hmap_tests()
 {
     printf("\n--- Starting hmap tests ---\n");
+    test_hmap_init_capacity();
+    test_hmap_clear_reuses_buckets();
     test_hmap_pow2_logic();
     test_hmap_basic_ops();
     test_hmap_collisions_and_erasure();

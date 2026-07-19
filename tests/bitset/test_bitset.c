@@ -8,17 +8,14 @@
 
 static uint64_t hash_bitset(bx_bitset set)
 {
-    // Use block count as seed
     uint64_t h = (uint64_t)set.block_count;
 
-    // Fast combination loop
     for (uint32_t i = 0; i < set.block_count; ++i)
     {
         h ^= set.bits[i];
         h *= 0xbf58476d1ce4e5b9ULL;
     }
 
-    // The Murmur Mixer
     h ^= h >> 33;
     h *= 0xff51afd7ed558ccduLL;
     h ^= h >> 33;
@@ -47,43 +44,69 @@ void test_bitset_popcount_utility()
 {
     printf("Running: test_bitset_popcount_utility\n");
 
-    // Directly
     assert(bx_pop_count_64(0) == 0);
     assert(bx_pop_count_64(1) == 1);
     assert(bx_pop_count_64(0xFFFFFFFFFFFFFFFFULL) == 64);
     assert(bx_pop_count_64(0x1010101010101010ULL) == 8);
 
-    // Via bitset wrapper
     bx_bitset set;
-    bx_bitset_init(&set, 128);
+    bx_bitset_init_capacity(&set, 128);
     bx_bitset_set_count_and_clear(&set, 128);
 
     bx_bitset_set_fast(&set, 0);
     bx_bitset_set_fast(&set, 63); // End of block 0
     bx_bitset_set_fast(&set, 64); // Start of block 1
 
-    assert(bx_bitset_count(&set) == 3);
+    assert(bx_bitset_popcount(&set) == 3);
 
     bx_bitset_drop(&set);
+}
+
+void test_bitset_init_defaults()
+{
+    printf("Running: test_bitset_init_defaults\n");
+
+    // Plain init allocates nothing, matching every other container
+    bx_bitset set;
+    bx_bitset_init(&set);
+    assert(set.bits == NULL);
+    assert(set.block_capacity == 0);
+    assert(set.block_count == 0);
+
+    // An empty bitset still answers queries without allocating
+    assert(bx_bitset_get(&set, 100) == false);
+    assert(bx_bitset_popcount(&set) == 0);
+    bx_bitset_unset(&set, 100);
+
+    // First write allocates lazily
+    bx_bitset_set_safe(&set, 63);
+    assert(set.bits != NULL);
+    assert(bx_bitset_get(&set, 63) == true);
+    assert(bx_bitset_popcount(&set) == 1);
+
+    bx_bitset_drop(&set);
+
+    // init_capacity rounds bits up to whole blocks
+    bx_bitset other;
+    bx_bitset_init_capacity(&other, 65);
+    assert(other.block_capacity == 2);
+    assert(other.block_count == 0);
+    bx_bitset_drop(&other);
 }
 
 void test_bitset_basic_ops()
 {
     printf("Running: test_bitset_basic_ops\n");
     bx_bitset set;
-    // Initialize for 64 bits (1 block)
-    bx_bitset_init(&set, 64);
+    bx_bitset_init_capacity(&set, 64);
     bx_bitset_set_count_and_clear(&set, 64);
 
-    // Initial state
     assert(bx_bitset_get(&set, 10) == false);
 
-    // Set Fast and Get
     bx_bitset_set_fast(&set, 10);
     assert(bx_bitset_get(&set, 10) == true);
 
-    // Clear
-    bx_bitset_clear(&set, 10);
+    bx_bitset_unset(&set, 10);
     assert(bx_bitset_get(&set, 10) == false);
 
     bx_bitset_drop(&set);
@@ -93,9 +116,8 @@ void test_bitset_set_safe_logic()
 {
     printf("Running: test_bitset_set_safe_logic\n");
     bx_bitset set;
-    bx_bitset_init(&set, 8); // Capacity 1 block, count 0
+    bx_bitset_init_capacity(&set, 8); // Capacity 1 block, count 0
 
-    // Should trigger bx_bitset_grow automatically
     bx_bitset_set_safe(&set, 10);   // Lands in block 0
     bx_bitset_set_safe(&set, 100);  // Lands in block 1
     bx_bitset_set_safe(&set, 1000); // Lands in block 15
@@ -114,17 +136,16 @@ void test_bitset_set_count_and_clear()
 {
     printf("Running: test_bitset_set_count_and_clear\n");
     bx_bitset set;
-    bx_bitset_init(&set, 64);
+    bx_bitset_init_capacity(&set, 64);
 
-    // Grow and set values
     bx_bitset_set_count_and_clear(&set, 256); // 4 blocks
     bx_bitset_set_fast(&set, 10);
     bx_bitset_set_fast(&set, 200);
-    assert(bx_bitset_count(&set) == 2);
+    assert(bx_bitset_popcount(&set) == 2);
 
-    // Clear via set_count_and_clear (should reset all bits to 0)
+    // Re-issuing the same count must still zero every bit
     bx_bitset_set_count_and_clear(&set, 256);
-    assert(bx_bitset_count(&set) == 0);
+    assert(bx_bitset_popcount(&set) == 0);
     assert(bx_bitset_get(&set, 10) == false);
 
     bx_bitset_drop(&set);
@@ -134,8 +155,8 @@ void test_bitset_union_logic()
 {
     printf("Running: test_bitset_union_logic\n");
     bx_bitset a, b;
-    bx_bitset_init(&a, 64);
-    bx_bitset_init(&b, 64);
+    bx_bitset_init_capacity(&a, 64);
+    bx_bitset_init_capacity(&b, 64);
     bx_bitset_set_count_and_clear(&a, 64);
     bx_bitset_set_count_and_clear(&b, 64);
 
@@ -146,7 +167,7 @@ void test_bitset_union_logic()
 
     assert(bx_bitset_get(&a, 1) == true);
     assert(bx_bitset_get(&a, 2) == true);
-    assert(bx_bitset_count(&a) == 2);
+    assert(bx_bitset_popcount(&a) == 2);
 
     bx_bitset_drop(&a);
     bx_bitset_drop(&b);
@@ -156,11 +177,9 @@ void test_bitset_fencepost_errors()
 {
     printf("Running: test_bitset_fencepost_errors\n");
     bx_bitset set;
-    // Exactly two blocks
-    bx_bitset_init(&set, 128);
+    bx_bitset_init_capacity(&set, 128);
     bx_bitset_set_count_and_clear(&set, 128);
 
-    // Test the "edges" of the 64-bit boundaries
     bx_bitset_set_fast(&set, 63);
     bx_bitset_set_fast(&set, 64);
 
@@ -178,19 +197,18 @@ void test_bitset_growth_preservation()
 {
     printf("Running: test_bitset_growth_preservation\n");
     bx_bitset set;
-    bx_bitset_init(&set, 64);
+    bx_bitset_init_capacity(&set, 64);
     bx_bitset_set_count_and_clear(&set, 64);
 
     bx_bitset_set_fast(&set, 10);
     bx_bitset_set_fast(&set, 60);
 
-    // Trigger growth manually
-    bx_bitset_grow(&set, 10); // Growth to 10 blocks (640 bits)
+    bx_bitset_grow_blocks(&set, 10); // Growth to 10 blocks (640 bits)
 
     // Verify old data is still there after memcpy/realloc
     assert(bx_bitset_get(&set, 10) == true);
     assert(bx_bitset_get(&set, 60) == true);
-    assert(bx_bitset_count(&set) == 2);
+    assert(bx_bitset_popcount(&set) == 2);
 
     bx_bitset_drop(&set);
 }
@@ -199,15 +217,13 @@ void test_bitset_out_of_bounds_safety()
 {
     printf("Running: test_bitset_out_of_bounds_safety\n");
     bx_bitset set;
-    bx_bitset_init(&set, 64);
+    bx_bitset_init_capacity(&set, 64);
     bx_bitset_set_count_and_clear(&set, 64);
 
-    // bx_bitset_get and bx_bitset_clear are designed to handle
-    // indices beyond block_count by returning false/doing nothing.
+    // get and unset absorb out-of-range indices rather than growing or faulting
     assert(bx_bitset_get(&set, 5000) == false);
 
-    // This should not crash
-    bx_bitset_clear(&set, 5000);
+    bx_bitset_unset(&set, 5000);
 
     bx_bitset_drop(&set);
 }
@@ -216,10 +232,9 @@ void test_bitset_stress_random_access()
 {
     printf("Running: test_bitset_stress_random_access\n");
     bx_bitset set;
-    bx_bitset_init(&set, 1024);
+    bx_bitset_init_capacity(&set, 1024);
     bx_bitset_set_count_and_clear(&set, 1024);
 
-    // Pattern: Set every prime-ish interval
     for (uint32_t i = 0; i < 1024; i += 3)
     {
         bx_bitset_set_fast(&set, i);
@@ -243,13 +258,12 @@ void test_bitset_reinit_cycle()
     printf("Running: test_bitset_reinit_cycle\n");
     bx_bitset set;
 
-    // Cycle 1
-    bx_bitset_init(&set, 64);
+    bx_bitset_init_capacity(&set, 64);
     bx_bitset_set_safe(&set, 10);
     bx_bitset_drop(&set);
 
-    // Cycle 2: Immediately re-init
-    bx_bitset_init(&set, 128);
+    // Re-init straight after drop must not see any of the old state
+    bx_bitset_init_capacity(&set, 128);
     bx_bitset_set_count_and_clear(&set, 128);
     assert(bx_bitset_get(&set, 10) == false);
     bx_bitset_set_fast(&set, 10);
@@ -267,11 +281,11 @@ void test_bitset_as_hmap_key()
 
     // Create three bitsets with different patterns
     bx_bitset s1, s2, s3;
-    bx_bitset_init(&s1, 128);
+    bx_bitset_init_capacity(&s1, 128);
     bx_bitset_set_count_and_clear(&s1, 128);
-    bx_bitset_init(&s2, 128);
+    bx_bitset_init_capacity(&s2, 128);
     bx_bitset_set_count_and_clear(&s2, 128);
-    bx_bitset_init(&s3, 128);
+    bx_bitset_init_capacity(&s3, 128);
     bx_bitset_set_count_and_clear(&s3, 128);
 
     bx_bitset_set_fast(&s1, 10);
@@ -289,16 +303,13 @@ void test_bitset_as_hmap_key()
     bx_hmap_bset_i32_insert(&map, s2, 2002);
     assert(map.base.size == 2);
 
-    // Verify retrieval using exact same object
     int32_t* v1 = bx_hmap_bset_i32_get(&map, s1);
     assert(v1 != NULL && *v1 == 1001);
 
-    // Verify retrieval using s3 (different object, identical content)
     // This proves the content-based hashing and equality work.
     int32_t* v3 = bx_hmap_bset_i32_get(&map, s3);
     assert(v3 != NULL && *v3 == 1001);
 
-    // Update value using s3
     bx_hmap_bset_i32_insert(&map, s3, 9999);
     assert(map.base.size == 2); // Size should not increase
     assert(*bx_hmap_bset_i32_get(&map, s1) == 9999);
@@ -313,6 +324,7 @@ void run_bitset_tests()
 {
     printf("\n--- Starting bitset tests ---\n");
     test_bitset_popcount_utility();
+    test_bitset_init_defaults();
     test_bitset_basic_ops();
     test_bitset_set_safe_logic();
     test_bitset_set_count_and_clear();

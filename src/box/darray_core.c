@@ -15,6 +15,12 @@ void bx_darray_init(bx_darray* arr, size_t elem_size)
     arr->elem_size = elem_size;
 }
 
+void bx_darray_init_capacity(bx_darray* arr, size_t elem_size, uint32_t capacity)
+{
+    bx_darray_init(arr, elem_size);
+    bx_darray_reserve(arr, capacity);
+}
+
 void bx_darray_drop(bx_darray* arr)
 {
     if (arr->data)
@@ -26,7 +32,7 @@ void bx_darray_drop(bx_darray* arr)
     arr->capacity = 0;
 }
 
-void bx_darray_reserve(bx_darray* arr, size_t capacity)
+void bx_darray_reserve(bx_darray* arr, uint32_t capacity)
 {
     if (capacity <= arr->capacity)
     {
@@ -45,7 +51,7 @@ void bx_darray_reserve(bx_darray* arr, size_t capacity)
     arr->capacity = capacity;
 }
 
-void bx_darray_resize(bx_darray* arr, size_t size)
+void bx_darray_resize(bx_darray* arr, uint32_t size)
 {
     bx_darray_reserve(arr, size);
     arr->size = size;
@@ -57,13 +63,13 @@ void bx_darray_grow(bx_darray* arr)
     {
         return;
     }
-    size_t new_cap = arr->capacity == 0
-                         ? BX_DARRAY_DEFAULT_CAPACITY
-                         : arr->capacity * 2;
+    uint32_t new_cap = arr->capacity == 0
+                           ? BX_DARRAY_DEFAULT_CAPACITY
+                           : arr->capacity * 2;
     bx_darray_reserve(arr, new_cap);
 }
 
-void bx_darray_remove_swap(bx_darray* arr, size_t index)
+void bx_darray_remove_swap(bx_darray* arr, uint32_t index)
 {
     assert(index < arr->size && "bx_darray: index out of bounds");
     arr->size--;

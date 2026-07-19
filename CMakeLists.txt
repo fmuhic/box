@@ -10,6 +10,7 @@ set(BOX_SOURCES
     src/box/bitset.c
     src/box/darray_core.c
     src/box/hmap_core.c
+    src/box/spset_core.c
 )
 
 set(BOX_HEADERS
@@ -19,6 +20,7 @@ set(BOX_HEADERS
     include/box/hmap_core.h
     include/box/hmap.h
     include/box/bitset.h
+    include/box/spset_core.h
     include/box/spset.h
 )
 
