@@ -1,0 +1,33 @@
+BasedOnStyle: LLVM
+Language: Cpp
+
+BreakBeforeBraces: Allman
+
+# Wrap every single-statement if/else/for/while/do body in braces.
+InsertBraces: true
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 0
+PointerAlignment: Left
+DerivePointerAlignment: false
+SortIncludes: false
+
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: true
+AlignTrailingComments: true
+
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+IndentCaseLabels: true
+
+SpaceBeforeParens: ControlStatements
+Cpp11BracedListStyle: false
+SpacesInParentheses: false
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false

@@ -49,7 +49,7 @@ void test_spset_get_and_modify()
     bx_spset_v2 set;
     bx_spset_v2_init(&set);
 
-    bx_spset_v2_insert(&set, 5, (Vec2){1.0f, 2.0f});
+    bx_spset_v2_insert(&set, 5, (Vec2){ 1.0f, 2.0f });
 
     // Modify value directly through the returned pointer
     Vec2* ptr = bx_spset_v2_get(&set, 5);
@@ -163,7 +163,7 @@ void test_spset_clear_and_reuse()
     {
         bx_spset_u32_insert(&set, i, i * 10);
     }
-    
+
     bx_spset_u32_clear(&set);
 
     assert(set.size == 0);
@@ -183,7 +183,7 @@ void test_spset_dense_iteration()
     bx_spset_u32 set;
     bx_spset_u32_init(&set);
 
-    uint32_t ids[] = {10, 50, 100};
+    uint32_t ids[] = { 10, 50, 100 };
     for (int i = 0; i < 3; ++i)
     {
         bx_spset_u32_insert(&set, ids[i], ids[i] * 2);

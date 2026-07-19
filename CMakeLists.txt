@@ -8,11 +8,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BOX_SOURCES
     src/box/core.c
     src/box/bitset.c
+    src/box/darray_core.c
+    src/box/hmap_core.c
 )
 
 set(BOX_HEADERS
     include/box/core.h
+    include/box/darray_core.h
     include/box/darray.h
+    include/box/hmap_core.h
     include/box/hmap.h
     include/box/bitset.h
     include/box/spset.h
@@ -27,6 +31,11 @@ target_include_directories(box PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
+add_executable(hmap_bench bench/hmap_bench.c)
+target_link_libraries(hmap_bench PRIVATE box)
+target_include_directories(hmap_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/bench)
+target_compile_options(hmap_bench PRIVATE -O3 -DNDEBUG)
 
 enable_testing()
 add_subdirectory(tests)

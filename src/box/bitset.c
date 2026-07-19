@@ -6,7 +6,7 @@ void bx_bitset_init(bx_bitset* set, uint32_t bit_capacity)
 {
     set->block_capacity = (bit_capacity + 63) / 64;
     set->block_count = 0;
-    
+
     size_t bytes = set->block_capacity * sizeof(uint64_t);
     set->bits = (uint64_t*)bx_alloc(bytes);
     memset(set->bits, 0, bytes);
@@ -18,7 +18,7 @@ void bx_bitset_drop(bx_bitset* set)
     {
         bx_free(set->bits);
     }
-    
+
     set->bits = nullptr;
     set->block_capacity = 0;
     set->block_count = 0;
@@ -30,7 +30,7 @@ void bx_bitset_set_count_and_clear(bx_bitset* set, uint32_t bit_count)
     if (set->block_capacity < block_count)
     {
         bx_bitset_drop(set);
-        
+
         // 1.5x growth
         uint32_t new_bit_capacity = bit_count + (bit_count >> 1);
         bx_bitset_init(set, new_bit_capacity);
@@ -43,22 +43,22 @@ void bx_bitset_set_count_and_clear(bx_bitset* set, uint32_t bit_count)
 void bx_bitset_grow(bx_bitset* set, uint32_t block_count)
 {
     assert(block_count > set->block_count);
-    
+
     if (block_count > set->block_capacity)
     {
         uint32_t old_capacity = set->block_capacity;
         set->block_capacity = block_count + (block_count >> 1);
-        
+
         size_t new_bytes = set->block_capacity * sizeof(uint64_t);
         uint64_t* new_bits = (uint64_t*)bx_alloc(new_bytes);
         memset(new_bits, 0, new_bytes);
-        
+
         if (set->bits)
         {
             memcpy(new_bits, set->bits, old_capacity * sizeof(uint64_t));
             bx_free(set->bits);
         }
-        
+
         set->bits = new_bits;
     }
 

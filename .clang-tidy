@@ -1,0 +1,48 @@
+# clang-tidy configuration for this repo.
+# Read automatically by editors (clangd) and the standalone `clang-tidy`
+# binary, which discover it by walking up from each source file.
+#
+# `Checks` enables whole groups, then subtracts individual checks that are
+# noisy or actively wrong for this codebase's style (see notes per line).
+Checks: >
+  bugprone-*,
+  performance-*,
+  portability-*,
+  clang-analyzer-*,
+  misc-*,
+  readability-*,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-isolate-declaration,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -readability-math-missing-parentheses,
+  -readability-use-concise-preprocessor-directives,
+  -readability-function-cognitive-complexity,
+  -portability-avoid-pragma-once,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-branch-clone,
+  -bugprone-macro-parentheses,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -misc-no-recursion,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -readability-implicit-bool-conversion,
+
+# Only diagnose our own headers (include/box and src/box), never system headers.
+HeaderFilterRegex: '(include/box|src/box)/.*'
+
+# Don't fail the build/editor on findings — surface them as warnings only.
+WarningsAsErrors: ''
+
+# When applying auto-fixes (`--fix`), format the result with our .clang-format.
+FormatStyle: file
+
+CheckOptions:
+  # include-cleaner: only flag *unused* includes (dead dependencies to remove).
+  # Suppress the "you should directly include the header for X" direction — we
+  # deliberately rely on a few hub headers rather than spelling out every one.
+  misc-include-cleaner.MissingIncludes: 'false'
+  misc-include-cleaner.UnusedIncludes: 'true'
+  # int->float is lossless for our small magnitudes; keep the check
+  # for the genuinely dangerous float->int direction only.
+  bugprone-narrowing-conversions.WarnOnIntegerToFloatingPointNarrowingConversion: 'false'
