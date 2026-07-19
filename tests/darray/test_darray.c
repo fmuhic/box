@@ -21,7 +21,7 @@ BX_DARRAY_DECLARE(int32_t, i32)
 BX_DARRAY_DECLARE(vec3, v3)
 BX_DARRAY_DECLARE(Entity, ent)
 
-void test_darray_basic_ops()
+void test_darray_basic_ops(void)
 {
     printf("Running: test_darray_basic_ops\n");
     bx_darray_i32 arr;
@@ -42,7 +42,7 @@ void test_darray_basic_ops()
     bx_darray_i32_drop(&arr);
 }
 
-void test_darray_growth()
+void test_darray_growth(void)
 {
     printf("Running: test_darray_growth\n");
     bx_darray_i32 arr;
@@ -65,7 +65,7 @@ void test_darray_growth()
     bx_darray_i32_drop(&arr);
 }
 
-void test_darray_remove_swap()
+void test_darray_remove_swap(void)
 {
     printf("Running: test_darray_remove_swap\n");
     bx_darray_i32 arr;
@@ -87,7 +87,7 @@ void test_darray_remove_swap()
     bx_darray_i32_drop(&arr);
 }
 
-void test_darray_complex_structures()
+void test_darray_complex_structures(void)
 {
     printf("Running: test_darray_complex_structures\n");
     bx_darray_ent entities;
@@ -105,7 +105,7 @@ void test_darray_complex_structures()
 
     bx_darray_ent_drop(&entities);
 }
-void test_darray_resize()
+void test_darray_resize(void)
 {
     printf("Running: test_darray_resize\n");
     bx_darray_i32 arr;
@@ -124,7 +124,7 @@ void test_darray_resize()
     bx_darray_i32_drop(&arr);
 }
 
-void test_darray_emplace()
+void test_darray_emplace(void)
 {
     printf("Running: test_darray_emplace\n");
     bx_darray_ent entities;
@@ -141,7 +141,7 @@ void test_darray_emplace()
     bx_darray_ent_drop(&entities);
 }
 
-void test_darray_init_capacity()
+void test_darray_init_capacity(void)
 {
     printf("Running: test_darray_init_capacity\n");
     bx_darray_i32 arr;
@@ -167,7 +167,7 @@ void test_darray_init_capacity()
     bx_darray_i32_drop(&arr);
 }
 
-void run_darray_tests()
+void run_darray_tests(void)
 {
     printf("\n--- Starting darray tests ---\n");
     test_darray_init_capacity();

@@ -160,10 +160,11 @@ void bx_hmap_insert(bx_hmap* map, const void* key, const void* value)
         .dist = (uint16_t)(((index - (hash & mask) + map->bucket_count) & mask)) + 1
     };
 
-    // Scratch is the tail of the table allocation. Resolved here, after the
-    // load-factor reserve above, which may have moved the table.
-    void* carried = bx_hmap_entry_at(map, map->bucket_count);
-    void* scratch = bx_hmap_entry_at(map, map->bucket_count + 1);
+    // Scratch is the tail of the table allocation.
+    // It's used to swap elements
+    char* scratch_base = (char*)map->table + (size_t)map->bucket_count * vt->entry_size;
+    void* carried = scratch_base;
+    void* scratch = scratch_base + vt->entry_size;
     memcpy(carried, key, vt->key_size);
     memcpy((char*)carried + vt->value_offset, value, vt->value_size);
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(Box VERSION 1.0.0 LANGUAGES C)
 
-set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -33,11 +33,6 @@ target_include_directories(box PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-
-add_executable(hmap_bench bench/hmap_bench.c)
-target_link_libraries(hmap_bench PRIVATE box)
-target_include_directories(hmap_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/bench)
-target_compile_options(hmap_bench PRIVATE -O3 -DNDEBUG)
 
 enable_testing()
 add_subdirectory(tests)

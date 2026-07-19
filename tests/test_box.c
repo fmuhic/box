@@ -4,7 +4,7 @@
 #include "bitset/test_bitset.h"
 #include "spset/test_spset.h"
 
-int main()
+int main(void)
 {
     printf("=== Box Test Suite ===\n");
 

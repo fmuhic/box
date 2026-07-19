@@ -13,7 +13,7 @@ typedef struct Vec2
 BX_SPSET_DECLARE(uint32_t, u32)
 BX_SPSET_DECLARE(Vec2, v2)
 
-void test_spset_basic_ops()
+void test_spset_basic_ops(void)
 {
     printf("Running: test_spset_basic_ops\n");
     bx_spset_u32 set;
@@ -37,7 +37,7 @@ void test_spset_basic_ops()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_get_and_modify()
+void test_spset_get_and_modify(void)
 {
     printf("Running: test_spset_get_and_modify\n");
     bx_spset_v2 set;
@@ -55,7 +55,7 @@ void test_spset_get_and_modify()
     bx_spset_v2_drop(&set);
 }
 
-void test_spset_paging_logic()
+void test_spset_paging_logic(void)
 {
     printf("Running: test_spset_paging_logic\n");
     bx_spset_u32 set;
@@ -80,7 +80,7 @@ void test_spset_paging_logic()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_swap_and_pop_correction()
+void test_spset_swap_and_pop_correction(void)
 {
     printf("Running: test_spset_swap_and_pop_correction\n");
     bx_spset_u32 set;
@@ -106,7 +106,7 @@ void test_spset_swap_and_pop_correction()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_duplicate_and_update()
+void test_spset_duplicate_and_update(void)
 {
     printf("Running: test_spset_duplicate_and_update\n");
     bx_spset_u32 set;
@@ -123,7 +123,7 @@ void test_spset_duplicate_and_update()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_erase_last_element()
+void test_spset_erase_last_element(void)
 {
     printf("Running: test_spset_erase_last_element\n");
     bx_spset_u32 set;
@@ -143,7 +143,7 @@ void test_spset_erase_last_element()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_clear_and_reuse()
+void test_spset_clear_and_reuse(void)
 {
     printf("Running: test_spset_clear_and_reuse\n");
     bx_spset_u32 set;
@@ -166,7 +166,7 @@ void test_spset_clear_and_reuse()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_dense_iteration()
+void test_spset_dense_iteration(void)
 {
     printf("Running: test_spset_dense_iteration\n");
     bx_spset_u32 set;
@@ -191,7 +191,7 @@ void test_spset_dense_iteration()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_reserve()
+void test_spset_reserve(void)
 {
     printf("Running: test_spset_reserve\n");
     bx_spset_u32 set;
@@ -219,7 +219,7 @@ void test_spset_reserve()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_init_capacity_is_allocation_free()
+void test_spset_init_capacity_is_allocation_free(void)
 {
     printf("Running: test_spset_init_capacity_is_allocation_free\n");
     bx_spset_u32 set;
@@ -247,7 +247,7 @@ void test_spset_init_capacity_is_allocation_free()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_reserve_ids_stays_lazy()
+void test_spset_reserve_ids_stays_lazy(void)
 {
     printf("Running: test_spset_reserve_ids_stays_lazy\n");
     bx_spset_u32 set;
@@ -265,7 +265,7 @@ void test_spset_reserve_ids_stays_lazy()
     bx_spset_u32_drop(&set);
 }
 
-void test_spset_reserve_is_a_hint_not_a_bound()
+void test_spset_reserve_is_a_hint_not_a_bound(void)
 {
     printf("Running: test_spset_reserve_is_a_hint_not_a_bound\n");
     bx_spset_u32 set;
@@ -281,7 +281,7 @@ void test_spset_reserve_is_a_hint_not_a_bound()
     bx_spset_u32_drop(&set);
 }
 
-void run_spset_tests()
+void run_spset_tests(void)
 {
     printf("\n--- Starting spset tests ---\n");
     test_spset_basic_ops();

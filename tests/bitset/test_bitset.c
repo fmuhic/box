@@ -40,7 +40,7 @@ static bool eq_bitset(bx_bitset a, bx_bitset b)
 
 BX_HMAP_DECLARE(bx_bitset, int32_t, bset_i32, hash_bitset, eq_bitset)
 
-void test_bitset_popcount_utility()
+void test_bitset_popcount_utility(void)
 {
     printf("Running: test_bitset_popcount_utility\n");
 
@@ -62,7 +62,7 @@ void test_bitset_popcount_utility()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_init_defaults()
+void test_bitset_init_defaults(void)
 {
     printf("Running: test_bitset_init_defaults\n");
 
@@ -94,7 +94,7 @@ void test_bitset_init_defaults()
     bx_bitset_drop(&other);
 }
 
-void test_bitset_basic_ops()
+void test_bitset_basic_ops(void)
 {
     printf("Running: test_bitset_basic_ops\n");
     bx_bitset set;
@@ -112,7 +112,7 @@ void test_bitset_basic_ops()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_set_safe_logic()
+void test_bitset_set_safe_logic(void)
 {
     printf("Running: test_bitset_set_safe_logic\n");
     bx_bitset set;
@@ -132,7 +132,7 @@ void test_bitset_set_safe_logic()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_set_count_and_clear()
+void test_bitset_set_count_and_clear(void)
 {
     printf("Running: test_bitset_set_count_and_clear\n");
     bx_bitset set;
@@ -151,7 +151,7 @@ void test_bitset_set_count_and_clear()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_union_logic()
+void test_bitset_union_logic(void)
 {
     printf("Running: test_bitset_union_logic\n");
     bx_bitset a, b;
@@ -173,7 +173,7 @@ void test_bitset_union_logic()
     bx_bitset_drop(&b);
 }
 
-void test_bitset_fencepost_errors()
+void test_bitset_fencepost_errors(void)
 {
     printf("Running: test_bitset_fencepost_errors\n");
     bx_bitset set;
@@ -193,7 +193,7 @@ void test_bitset_fencepost_errors()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_growth_preservation()
+void test_bitset_growth_preservation(void)
 {
     printf("Running: test_bitset_growth_preservation\n");
     bx_bitset set;
@@ -213,7 +213,7 @@ void test_bitset_growth_preservation()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_out_of_bounds_safety()
+void test_bitset_out_of_bounds_safety(void)
 {
     printf("Running: test_bitset_out_of_bounds_safety\n");
     bx_bitset set;
@@ -228,7 +228,7 @@ void test_bitset_out_of_bounds_safety()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_stress_random_access()
+void test_bitset_stress_random_access(void)
 {
     printf("Running: test_bitset_stress_random_access\n");
     bx_bitset set;
@@ -253,7 +253,7 @@ void test_bitset_stress_random_access()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_reinit_cycle()
+void test_bitset_reinit_cycle(void)
 {
     printf("Running: test_bitset_reinit_cycle\n");
     bx_bitset set;
@@ -272,7 +272,7 @@ void test_bitset_reinit_cycle()
     bx_bitset_drop(&set);
 }
 
-void test_bitset_as_hmap_key()
+void test_bitset_as_hmap_key(void)
 {
     printf("Running: test_bitset_as_hmap_key\n");
 
@@ -320,7 +320,7 @@ void test_bitset_as_hmap_key()
     bx_bitset_drop(&s3);
 }
 
-void run_bitset_tests()
+void run_bitset_tests(void)
 {
     printf("\n--- Starting bitset tests ---\n");
     test_bitset_popcount_utility();

@@ -22,7 +22,7 @@ static bool eq_i32(int32_t a, int32_t b)
 
 BX_HMAP_DECLARE(int32_t, float, i32f32, hash_i32, eq_i32)
 
-void test_hmap_pow2_logic()
+void test_hmap_pow2_logic(void)
 {
     printf("Running: test_hmap_pow2_logic\n");
     assert(bx_next_pow2(0) == 1);
@@ -32,7 +32,7 @@ void test_hmap_pow2_logic()
     assert(bx_next_pow2(9) == 16);
 }
 
-void test_hmap_basic_ops()
+void test_hmap_basic_ops(void)
 {
     printf("Running: test_hmap_basic_ops\n");
     bx_hmap_i32f32 map;
@@ -54,7 +54,7 @@ void test_hmap_basic_ops()
     bx_hmap_i32f32_drop(&map);
 }
 
-void test_hmap_collisions_and_erasure()
+void test_hmap_collisions_and_erasure(void)
 {
     printf("Running: test_hmap_collisions_and_erasure\n");
     bx_hmap_i32f32 map;
@@ -86,7 +86,7 @@ void test_hmap_collisions_and_erasure()
     bx_hmap_i32f32_drop(&map);
 }
 
-void test_hmap_stress_resize()
+void test_hmap_stress_resize(void)
 {
     printf("Running: test_hmap_stress_resize\n");
     bx_hmap_i32f32 map;
@@ -120,7 +120,7 @@ void test_hmap_stress_resize()
     bx_hmap_i32f32_drop(&map);
 }
 
-void test_hmap_wrap_around()
+void test_hmap_wrap_around(void)
 {
     printf("Running: test_hmap_wrap_around\n");
     bx_hmap_i32f32 map;
@@ -158,7 +158,7 @@ void test_hmap_wrap_around()
     bx_hmap_i32f32_drop(&map);
 }
 
-void test_hmap_update_duplicate()
+void test_hmap_update_duplicate(void)
 {
     printf("Running: test_hmap_update_duplicate\n");
     bx_hmap_i32f32 map;
@@ -174,7 +174,7 @@ void test_hmap_update_duplicate()
     bx_hmap_i32f32_drop(&map);
 }
 
-static void test_hmap_minihash_collision()
+static void test_hmap_minihash_collision(void)
 {
     printf("Running: test_hmap_minihash_collision\n");
     bx_hmap_i32f32 map;
@@ -202,7 +202,7 @@ static void test_hmap_minihash_collision()
     bx_hmap_i32f32_drop(&map);
 }
 
-static void test_hmap_deep_backward_shift()
+static void test_hmap_deep_backward_shift(void)
 {
     printf("Running: test_deep_backward_shift\n");
     bx_hmap_i32f32 map;
@@ -235,7 +235,7 @@ static void test_hmap_deep_backward_shift()
     bx_hmap_i32f32_drop(&map);
 }
 
-static void test_hmap_empty_map_queries()
+static void test_hmap_empty_map_queries(void)
 {
     printf("Running: test_hmap_empty_map_queries\n");
     bx_hmap_i32f32 map;
@@ -293,7 +293,7 @@ static bool eq_str(const char* a, const char* b)
 BX_HMAP_DECLARE(int32_t, vec3, i32v3, hash_i32, eq_i32)
 BX_HMAP_DECLARE(const char*, Entity, str_ent, hash_str, eq_str)
 
-void test_hamp_complex_structures()
+void test_hamp_complex_structures(void)
 {
     printf("Running: test_hamp_complex_structures\n");
 
@@ -336,7 +336,7 @@ void test_hamp_complex_structures()
     bx_hmap_str_ent_drop(&name_to_ent);
 }
 
-void test_hmap_init_capacity()
+void test_hmap_init_capacity(void)
 {
     printf("Running: test_hmap_init_capacity\n");
     bx_hmap_i32f32 map;
@@ -358,7 +358,7 @@ void test_hmap_init_capacity()
     bx_hmap_i32f32_drop(&map);
 }
 
-void test_hmap_clear_reuses_buckets()
+void test_hmap_clear_reuses_buckets(void)
 {
     printf("Running: test_hmap_clear_reuses_buckets\n");
     bx_hmap_i32f32 map;
@@ -428,7 +428,7 @@ static bool payload_intact(const BigPayload* p, int32_t key)
     return true;
 }
 
-void test_hmap_large_entries()
+void test_hmap_large_entries(void)
 {
     printf("Running: test_hmap_large_entries\n");
     assert(sizeof(bx_hmap_i32big_entry) > 1024);
@@ -481,7 +481,7 @@ void test_hmap_large_entries()
     bx_hmap_i32big_drop(&map);
 }
 
-void run_hmap_tests()
+void run_hmap_tests(void)
 {
     printf("\n--- Starting hmap tests ---\n");
     test_hmap_large_entries();

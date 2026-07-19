@@ -1,6 +1,6 @@
 # box
 
-Type-safe generic data structures for C23.
+Type-safe generic data structures for C99.
 
 Each container is a typeless core compiled once, plus a macro that generates
 `static inline` typed wrappers. You get type checking without templates and

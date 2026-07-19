@@ -6,14 +6,14 @@ set -e
 BUILD_DIR="build"
 
 # All first-party sources (the build tree is excluded).
-SOURCES=$(find include src tests bench \( -name '*.c' -o -name '*.h' \))
+SOURCES=$(find include src tests \( -name '*.c' -o -name '*.h' \))
 
 # --- Enforce formatting (.clang-format) ---
 if command -v clang-format >/dev/null 2>&1; then
     echo "--- Checking formatting (clang-format) ---"
     if ! clang-format --dry-run --Werror $SOURCES; then
         echo "!!! Formatting drift detected. Fix with:"
-        echo "    find include src tests bench \\( -name '*.c' -o -name '*.h' \\) | xargs clang-format -i"
+        echo "    find include src tests \\( -name '*.c' -o -name '*.h' \\) | xargs clang-format -i"
         exit 1
     fi
 else
