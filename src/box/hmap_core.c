@@ -81,9 +81,8 @@ void bx_hmap_clear(bx_hmap* map)
         return;
     }
 
-    /* Buckets stay allocated for reuse; emptying every slot is enough */
     memset(map->meta, 0, (map->bucket_count + 1) * sizeof(bx_hmap_meta));
-    /* Reinstall the probe guard bx_hmap_reserve puts past the last bucket */
+    // Reinstall the probe guard
     map->meta[map->bucket_count].dist = BX_HMAP_DIST_MASK;
     map->size = 0;
 }
@@ -111,15 +110,18 @@ void bx_hmap_reserve(bx_hmap* map, uint32_t capacity)
 
     bx_hmap old = *map;
     map->bucket_count = new_bucket_count;
-    map->table = bx_alloc(new_bucket_count * vt->entry_size);
+
+    // Two extra entries past the buckets: scratch for the insert swap
+    uint32_t table_slots = new_bucket_count + BX_HMAP_SCRATCH_SLOTS;
+    map->table = bx_alloc(table_slots * vt->entry_size);
     assert(map->table != NULL && "bx_hmap: allocation failed");
-    memset(map->table, 0, new_bucket_count * vt->entry_size);
+    memset(map->table, 0, table_slots * vt->entry_size);
     map->meta = bx_alloc((new_bucket_count + 1) * sizeof(bx_hmap_meta));
     assert(map->meta != NULL && "bx_hmap: allocation failed");
     memset(map->meta, 0, (new_bucket_count + 1) * sizeof(bx_hmap_meta));
     map->size = 0;
 
-    /* Guard slot past the last bucket: stops a probe run from walking off the end */
+    // Guard slot past the last bucket: stops a probe run from walking off the end
     map->meta[new_bucket_count].dist = BX_HMAP_DIST_MASK;
 
     for (uint32_t i = 0; i < old.bucket_count; i++)
@@ -158,17 +160,18 @@ void bx_hmap_insert(bx_hmap* map, const void* key, const void* value)
         .dist = (uint16_t)(((index - (hash & mask) + map->bucket_count) & mask)) + 1
     };
 
-    assert(vt->entry_size <= BX_HMAP_MAX_ENTRY_SIZE && "bx_hmap: entry exceeds BX_HMAP_MAX_ENTRY_SIZE");
-    char carried[BX_HMAP_MAX_ENTRY_SIZE];
-    char scratch[BX_HMAP_MAX_ENTRY_SIZE];
+    // Scratch is the tail of the table allocation. Resolved here, after the
+    // load-factor reserve above, which may have moved the table.
+    void* carried = bx_hmap_entry_at(map, map->bucket_count);
+    void* scratch = bx_hmap_entry_at(map, map->bucket_count + 1);
     memcpy(carried, key, vt->key_size);
-    memcpy(carried + vt->value_offset, value, vt->value_size);
+    memcpy((char*)carried + vt->value_offset, value, vt->value_size);
 
     while (map->meta[index].dist != 0)
     {
-        /* Robin Hood: a resident closer to its ideal bucket than we are gets
-           evicted, and we carry it onward instead. Bounds the worst-case probe
-           length by keeping displacement evenly spread. */
+        // Robin Hood: a resident closer to its ideal bucket than we are gets
+        // evicted, and we carry it onward instead. Bounds the worst-case probe
+        // length by keeping displacement evenly spread.
         if (map->meta[index].dist < new_meta.dist)
         {
             bx_hmap_meta resident_meta = map->meta[index];
@@ -202,9 +205,9 @@ void bx_hmap_erase(bx_hmap* map, const void* key)
     uint32_t mask = map->bucket_count - 1;
     uint32_t hole = index, probe = hole;
 
-    /* Backward-shift deletion: drag each displaced follower one slot closer to
-       its ideal bucket, stopping at the first entry already home (dist < 2).
-       Leaves no tombstones, so lookups never probe past a dead slot. */
+    // Backward-shift deletion: drag each displaced follower one slot closer to
+    // its ideal bucket, stopping at the first entry already home (dist < 2).
+    // Leaves no tombstones, so lookups never probe past a dead slot.
     for (;;)
     {
         probe = (probe + 1) & mask;

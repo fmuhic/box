@@ -42,8 +42,8 @@ void bx_bitset_set_count_and_clear(bx_bitset* set, uint32_t bit_count)
     uint32_t block_count = (bit_count + 63) / 64;
     if (set->block_capacity < block_count)
     {
-        /* Contents are about to be zeroed anyway, so reallocate rather than
-           grow-and-copy. Overshoot by 1.5x to amortize repeated growth. */
+        // Contents are about to be zeroed anyway, so reallocate rather than
+        // grow-and-copy. Overshoot by 1.5x to amortize repeated growth.
         bx_bitset_drop(set);
         bx_bitset_init_capacity(set, bit_count + (bit_count >> 1));
     }
@@ -62,7 +62,7 @@ void bx_bitset_grow_blocks(bx_bitset* set, uint32_t block_count)
     if (block_count > set->block_capacity)
     {
         uint32_t old_block_capacity = set->block_capacity;
-        set->block_capacity = block_count + (block_count >> 1); /* 1.5x */
+        set->block_capacity = block_count + (block_count >> 1); // 1.5x
 
         size_t new_bytes = set->block_capacity * sizeof(uint64_t);
         uint64_t* new_bits = (uint64_t*)bx_alloc(new_bytes);

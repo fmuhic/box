@@ -133,8 +133,7 @@ stops early instead of scanning the table.
 \* amortized; rehashes at 80% load.
 
 `capacity` counts elements, not buckets: `init_capacity(m, 100)` allocates 256
-buckets. Bucket count is always a power of two. Entries are capped at
-`BX_HMAP_MAX_ENTRY_SIZE` (256 bytes), checked at compile time.
+buckets. Bucket count is always a power of two.
 
 ```c
 static uint64_t hash_i32(int32_t k) { return (uint64_t)k * 0x9e3779b97f4a7c15ULL; }

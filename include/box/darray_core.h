@@ -8,8 +8,8 @@ typedef struct bx_darray
     void* data;
     uint32_t size;
     uint32_t capacity;
-    /* size_t on purpose: it widens every `count * elem_size` to 64-bit before
-       the multiply, so a byte count can never overflow into a short alloc. */
+    // size_t on purpose: it widens every `count * elem_size` to 64-bit before
+    // the multiply, so a byte count can never overflow into a short alloc.
     size_t elem_size;
 } bx_darray;
 

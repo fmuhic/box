@@ -12,9 +12,6 @@
         V value;                                                                              \
     } bx_hmap_##NAME##_entry;                                                                 \
                                                                                               \
-    _Static_assert(sizeof(bx_hmap_##NAME##_entry) <= BX_HMAP_MAX_ENTRY_SIZE,                  \
-                   "bx_hmap: entry exceeds BX_HMAP_MAX_ENTRY_SIZE");                          \
-                                                                                              \
     static inline uint64_t bx_hmap_##NAME##_hash_adapter(const void* k)                       \
     {                                                                                         \
         return HASH_FN(*(K const*)k);                                                         \

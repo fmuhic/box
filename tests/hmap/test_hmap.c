@@ -400,9 +400,91 @@ void test_hmap_clear_reuses_buckets()
     bx_hmap_i32f32_drop(&map);
 }
 
+// 1 KB value: the whole entry is far past the 256-byte cap that used to exist
+typedef struct BigPayload
+{
+    uint8_t bytes[1024];
+} BigPayload;
+
+BX_HMAP_DECLARE(int32_t, BigPayload, i32big, hash_i32, eq_i32)
+
+static void fill_payload(BigPayload* p, int32_t key)
+{
+    for (size_t i = 0; i < sizeof(p->bytes); i++)
+    {
+        p->bytes[i] = (uint8_t)(key * 7 + (int32_t)i);
+    }
+}
+
+static bool payload_intact(const BigPayload* p, int32_t key)
+{
+    for (size_t i = 0; i < sizeof(p->bytes); i++)
+    {
+        if (p->bytes[i] != (uint8_t)(key * 7 + (int32_t)i))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void test_hmap_large_entries()
+{
+    printf("Running: test_hmap_large_entries\n");
+    assert(sizeof(bx_hmap_i32big_entry) > 1024);
+
+    bx_hmap_i32big map;
+    bx_hmap_i32big_init(&map);
+
+    // Start dense so inserts collide, displace, and force at least one rehash
+    bx_hmap_i32big_reserve(&map, 4);
+    uint32_t first_buckets = bx_hmap_i32big_bucket_count(&map);
+
+    const int32_t count = 200;
+    for (int32_t i = 0; i < count; i++)
+    {
+        BigPayload p;
+        fill_payload(&p, i);
+        bx_hmap_i32big_insert(&map, i, p);
+    }
+    assert(bx_hmap_i32big_size(&map) == (uint32_t)count);
+    assert(bx_hmap_i32big_bucket_count(&map) > first_buckets); // rehashed
+
+    // Every byte must survive displacement, rehashing and the swap scratch
+    for (int32_t i = 0; i < count; i++)
+    {
+        BigPayload* got = bx_hmap_i32big_get(&map, i);
+        assert(got != NULL);
+        assert(payload_intact(got, i));
+    }
+
+    // Backward-shift deletion with large entries
+    for (int32_t i = 0; i < count; i += 2)
+    {
+        bx_hmap_i32big_erase(&map, i);
+    }
+    assert(bx_hmap_i32big_size(&map) == (uint32_t)count / 2);
+
+    for (int32_t i = 0; i < count; i++)
+    {
+        BigPayload* got = bx_hmap_i32big_get(&map, i);
+        if (i % 2 == 0)
+        {
+            assert(got == NULL);
+        }
+        else
+        {
+            assert(got != NULL && payload_intact(got, i));
+        }
+    }
+
+    bx_hmap_i32big_drop(&map);
+}
+
 void run_hmap_tests()
 {
     printf("\n--- Starting hmap tests ---\n");
+    test_hmap_large_entries();
     test_hmap_init_capacity();
     test_hmap_clear_reuses_buckets();
     test_hmap_pow2_logic();

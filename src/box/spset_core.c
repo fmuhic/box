@@ -39,8 +39,8 @@ void bx_spset_drop(bx_spset* set)
     set->page_count = 0;
 }
 
-/* New directory slots are NULL, which already reads as "page not present",
-   so the directory needs no separate size/capacity split. */
+// New directory slots are NULL, which already reads as "page not present",
+// so the directory needs no separate size/capacity split.
 static void bx_spset_grow_directory(bx_spset* set, uint32_t required_pages)
 {
     if (required_pages <= set->page_count)
@@ -62,7 +62,7 @@ static void bx_spset_grow_directory(bx_spset* set, uint32_t required_pages)
     set->page_count = required_pages;
 }
 
-/* 0xFF bytes give UINT32_MAX per entry, which is BX_SPSET_INVALID_INDEX. */
+// 0xFF bytes give UINT32_MAX per entry, which is BX_SPSET_INVALID_INDEX.
 static void bx_spset_alloc_page(bx_spset* set, uint32_t page)
 {
     set->sparse[page] = (uint32_t*)bx_alloc(BX_SPSET_PAGE_SIZE * sizeof(uint32_t));
@@ -77,12 +77,11 @@ void bx_spset_reserve(bx_spset* set, uint32_t capacity)
         return;
     }
 
-    /* Both arrays share one dense index, so they must stay the same length */
+    // Both arrays share one dense index, so they must stay the same length
     bx_darray_reserve(&set->dense, capacity);
     bx_darray_reserve(&set->ids, capacity);
 
-    /* Materialize the pages spanning IDs [0, capacity) up front, so inserts in
-       that range never touch the allocator */
+    // Materialize the pages up front so inserts in range never allocate
     uint32_t required_pages = ((capacity - 1) >> BX_SPSET_PAGE_SHIFT) + 1;
     bx_spset_grow_directory(set, required_pages);
 
@@ -108,8 +107,8 @@ uint32_t bx_spset_find(const bx_spset* set, uint32_t id)
         return BX_SPSET_INVALID_INDEX;
     }
 
-    /* Validating against ids[] is what lets erase and clear leave stale sparse
-       entries behind instead of scrubbing them */
+    // Validating against ids[] is what lets erase and clear leave stale sparse
+    // entries behind instead of scrubbing them
     uint32_t dense_index = set->sparse[page][id & BX_SPSET_PAGE_MASK];
     if (dense_index < set->dense.size && ((const uint32_t*)set->ids.data)[dense_index] == id)
     {
@@ -139,7 +138,7 @@ uint32_t bx_spset_insert_slot(bx_spset* set, uint32_t id, bool* out_is_new)
         bx_spset_alloc_page(set, page);
     }
 
-    /* Grow both arrays before bumping either size so they stay in lockstep */
+    // Grow both arrays before bumping either size so they stay in lockstep
     if (set->dense.size >= set->dense.capacity)
     {
         bx_darray_grow(&set->dense);
@@ -168,7 +167,7 @@ void bx_spset_erase(bx_spset* set, uint32_t id)
     uint32_t last_index = set->dense.size - 1;
     uint32_t moved_id = ids[last_index];
 
-    /* Swap-and-pop keeps dense packed, at the cost of not preserving order */
+    // Swap-and-pop keeps dense packed, at the cost of not preserving order
     memcpy((char*)set->dense.data + hole * set->dense.elem_size,
            (char*)set->dense.data + last_index * set->dense.elem_size,
            set->dense.elem_size);
@@ -183,7 +182,7 @@ void bx_spset_erase(bx_spset* set, uint32_t id)
 
 void bx_spset_clear(bx_spset* set)
 {
-    /* Sparse pages stay allocated and stale; bx_spset_find validates via ids[] */
+    // Sparse pages are deliberately left stale
     bx_darray_clear(&set->dense);
     bx_darray_clear(&set->ids);
 }
