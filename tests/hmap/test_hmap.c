@@ -40,13 +40,13 @@ void test_hmap_basic_ops(void)
 
     bx_hmap_i32f32_insert(&map, 10, 100.5f);
     bx_hmap_i32f32_insert(&map, 20, 200.5f);
-    assert(map.base.size == 2);
+    assert(bx_hmap_i32f32_size(&map) == 2);
 
     float* v1 = bx_hmap_i32f32_get(&map, 10);
     assert(v1 != NULL && *v1 == 100.5f);
 
     bx_hmap_i32f32_insert(&map, 10, 500.0f);
-    assert(map.base.size == 2);
+    assert(bx_hmap_i32f32_size(&map) == 2);
     assert(*bx_hmap_i32f32_get(&map, 10) == 500.0f);
 
     assert(bx_hmap_i32f32_get(&map, 99) == NULL);
@@ -76,7 +76,7 @@ void test_hmap_collisions_and_erasure(void)
     // Test Backward-Shift Erasure
     // Erasing an element in a collision chain should move others back
     bx_hmap_i32f32_erase(&map, 2);
-    assert(map.base.size == 5);
+    assert(bx_hmap_i32f32_size(&map) == 5);
     assert(bx_hmap_i32f32_get(&map, 2) == NULL);
 
     // Ensure the chain wasn't broken for elements after the erased one
@@ -168,7 +168,7 @@ void test_hmap_update_duplicate(void)
     bx_hmap_i32f32_insert(&map, 5, 2.0f);
     bx_hmap_i32f32_insert(&map, 5, 3.0f);
 
-    assert(map.base.size == 1);
+    assert(bx_hmap_i32f32_size(&map) == 1);
     assert(*bx_hmap_i32f32_get(&map, 5) == 3.0f);
 
     bx_hmap_i32f32_drop(&map);
@@ -215,7 +215,7 @@ static void test_hmap_deep_backward_shift(void)
     int found = 0;
     for (int32_t i = 0; found < 5; i++)
     {
-        if ((hash_i32(i) & (map.base.bucket_count - 1)) == 5)
+        if ((hash_i32(i) & (bx_hmap_i32f32_bucket_count(&map) - 1)) == 5)
         {
             keys[found++] = i;
             bx_hmap_i32f32_insert(&map, i, (float)i);
@@ -245,7 +245,7 @@ static void test_hmap_empty_map_queries(void)
     assert(bx_hmap_i32f32_get(&map, 10) == NULL);
     bx_hmap_i32f32_erase(&map, 10);
 
-    assert(map.base.size == 0);
+    assert(bx_hmap_i32f32_size(&map) == 0);
     bx_hmap_i32f32_drop(&map);
 }
 
@@ -341,9 +341,9 @@ void test_hmap_init_capacity(void)
     printf("Running: test_hmap_init_capacity\n");
     bx_hmap_i32f32 map;
 
-    // capacity counts elements: 100 / 0.80 + 4 = 129, rounded up to 256 buckets
+    // capacity counts elements: ceil(100 / 0.80) = 125, rounded up to 128 buckets
     bx_hmap_i32f32_init_capacity(&map, 100);
-    assert(bx_hmap_i32f32_bucket_count(&map) == 256);
+    assert(bx_hmap_i32f32_bucket_count(&map) == 128);
     assert(bx_hmap_i32f32_size(&map) == 0);
 
     // Filling to the requested capacity must not rehash
@@ -352,10 +352,36 @@ void test_hmap_init_capacity(void)
         bx_hmap_i32f32_insert(&map, i, (float)i);
     }
     assert(bx_hmap_i32f32_size(&map) == 100);
-    assert(bx_hmap_i32f32_bucket_count(&map) == 256);
+    assert(bx_hmap_i32f32_bucket_count(&map) == 128);
     assert(*bx_hmap_i32f32_get(&map, 42) == 42.0f);
 
     bx_hmap_i32f32_drop(&map);
+}
+
+// The element->bucket conversion must round up. Flooring it hands back a table
+// already past the load factor, so the reserved-for inserts rehash anyway.
+// capacity 7 floors to 8 buckets, whose grow threshold is 6: one short.
+void test_hmap_reserve_is_exact(void)
+{
+    printf("Running: test_hmap_reserve_is_exact\n");
+
+    for (uint32_t capacity = 1; capacity <= 400; capacity++)
+    {
+        bx_hmap_i32f32 map;
+        bx_hmap_i32f32_init_capacity(&map, capacity);
+        uint32_t reserved = bx_hmap_i32f32_bucket_count(&map);
+
+        for (int32_t i = 0; i < (int32_t)capacity; i++)
+        {
+            bx_hmap_i32f32_insert(&map, i, (float)i);
+        }
+
+        // Storing exactly the reserved count must not have triggered a resize
+        assert(bx_hmap_i32f32_size(&map) == capacity);
+        assert(bx_hmap_i32f32_bucket_count(&map) == reserved);
+
+        bx_hmap_i32f32_drop(&map);
+    }
 }
 
 void test_hmap_clear_reuses_buckets(void)
@@ -486,6 +512,7 @@ void run_hmap_tests(void)
     printf("\n--- Starting hmap tests ---\n");
     test_hmap_large_entries();
     test_hmap_init_capacity();
+    test_hmap_reserve_is_exact();
     test_hmap_clear_reuses_buckets();
     test_hmap_pow2_logic();
     test_hmap_basic_ops();

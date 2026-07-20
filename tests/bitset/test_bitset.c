@@ -301,7 +301,7 @@ void test_bitset_as_hmap_key(void)
     // Insert s1 and s2
     bx_hmap_bset_i32_insert(&map, s1, 1001);
     bx_hmap_bset_i32_insert(&map, s2, 2002);
-    assert(map.base.size == 2);
+    assert(bx_hmap_bset_i32_size(&map) == 2);
 
     int32_t* v1 = bx_hmap_bset_i32_get(&map, s1);
     assert(v1 != NULL && *v1 == 1001);
@@ -311,7 +311,7 @@ void test_bitset_as_hmap_key(void)
     assert(v3 != NULL && *v3 == 1001);
 
     bx_hmap_bset_i32_insert(&map, s3, 9999);
-    assert(map.base.size == 2); // Size should not increase
+    assert(bx_hmap_bset_i32_size(&map) == 2); // Size should not increase
     assert(*bx_hmap_bset_i32_get(&map, s1) == 9999);
 
     bx_hmap_bset_i32_drop(&map);

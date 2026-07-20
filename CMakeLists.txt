@@ -9,7 +9,6 @@ set(BOX_SOURCES
     src/box/core.c
     src/box/bitset.c
     src/box/darray_core.c
-    src/box/hmap_core.c
     src/box/spset_core.c
 )
 

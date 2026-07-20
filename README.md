@@ -127,13 +127,18 @@ stops early instead of scanning the table.
 | `get(m, k)` | O(1) | `V*`, or `NULL` |
 | `contains(m, k)` | O(1) | |
 | `erase(m, k)` | O(1) | no-op if absent |
-| `reserve(m, n)` | O(n) | fit `n` elements without rehashing |
+| `clear(m)` | O(n) | empty the map, keeping the bucket allocation |
+| `size(m)` | O(1) | live element count |
 | `bucket_count(m)` | O(1) | |
+| `reserve(m, n)` | O(n) | fit `n` elements without rehashing |
+| `init_capacity(m, n)` | O(n) | `init` plus `reserve(n)` in one call |
 
 \* amortized; rehashes at 80% load.
 
-`capacity` counts elements, not buckets: `init_capacity(m, 100)` allocates 256
-buckets. Bucket count is always a power of two.
+`capacity` counts elements, not buckets: holding 100 elements at 80% load takes
+at least `100 / 0.80` = 125 buckets, rounded up to the next power of two — so
+`init_capacity(m, 100)` allocates 128. Bucket count is always a power of two,
+and doubles on each resize.
 
 ```c
 static uint64_t hash_i32(int32_t k) { return (uint64_t)k * 0x9e3779b97f4a7c15ULL; }

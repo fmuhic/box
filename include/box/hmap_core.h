@@ -1,59 +1,41 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
 
-#define BX_HMAP_MAX_LOAD_FACTOR 0.80f
-#define BX_HMAP_DIST_MASK       0x3ffU
+// Max load factor as an exact ratio, 4/5 == 0.80. Integer form keeps the grow
+// threshold and the element->bucket conversion off the FPU and exactly
+// reproducible; absl and khash both apply their load factor the same way.
+#define BX_HMAP_LOAD_NUM 4
+#define BX_HMAP_LOAD_DEN 5
 
-// The bucket table is over-allocated by this many entries. The tail entries are
-// scratch for the insert swap, so an entry has no maximum size.
-#define BX_HMAP_SCRATCH_SLOTS 2
+// Floor on a table that has been allocated at all, so reserve(0) and the first
+// insert into an empty map have somewhere to go.
+#define BX_HMAP_MIN_BUCKETS 8
 
-// Shared by the core probe loop and the devirtualized _get in hmap.h. If the
-// two ever derive this differently, lookups miss silently.
+// Bucket-space growth per resize. Applied to bucket_count directly: routing it
+// through the element-capacity API instead would re-divide by the load factor
+// and silently land on 4x after next_pow2 rounding.
+#define BX_HMAP_GROWTH 2
+
+#define BX_HMAP_DIST_MASK 0x3ffU
+
+// Shared by every generated probe loop. If two of them ever derive this
+// differently, lookups miss silently.
 #define BX_HMAP_MINI_HASH(h) ((uint8_t)(((h) >> 24) & 0x3fU))
+
+// For reserve only. It rehashes through insert, so leaving it inlinable puts a
+// copy of insert-inside-reserve at every insert call site: 91K vs 25K of .text
+// across the hmap tests. Reserve runs once per doubling, so out-of-line is free.
+// `inline` is absent on purpose, it contradicts `noinline`; `unused` covers TUs
+// that never reserve.
+#if defined(__GNUC__) || defined(__clang__)
+#define BX_HMAP_COLD __attribute__((noinline, unused)) static
+#else
+#define BX_HMAP_COLD static inline
+#endif
 
 typedef struct bx_hmap_meta
 {
     uint16_t mini_hash : 6;
     uint16_t dist : 10;
 } bx_hmap_meta;
-
-typedef struct bx_hmap_vtable
-{
-    // size_t on purpose: keeps every `count * entry_size` 64-bit so a byte
-    // count can never overflow into a short alloc.
-    size_t entry_size;
-    size_t key_size;
-    size_t value_offset;
-    size_t value_size;
-    uint64_t (*hash)(const void* key);
-    bool (*eq)(const void* a, const void* b);
-} bx_hmap_vtable;
-
-typedef struct bx_hmap
-{
-    void* table;
-    bx_hmap_meta* meta;
-    uint32_t size;
-    uint32_t bucket_count;
-    const bx_hmap_vtable* vt;
-} bx_hmap;
-
-void bx_hmap_init(bx_hmap* map, const bx_hmap_vtable* vt);
-
-// `capacity` counts elements, not buckets: the bucket count is derived by
-// dividing through BX_HMAP_MAX_LOAD_FACTOR and rounding up to a power of two,
-// so init_capacity(map, vt, 100) allocates 256 buckets.
-void bx_hmap_init_capacity(bx_hmap* map, const bx_hmap_vtable* vt, uint32_t capacity);
-void bx_hmap_drop(bx_hmap* map);
-void bx_hmap_reserve(bx_hmap* map, uint32_t capacity);
-
-// Empties the map but keeps the bucket allocation for reuse.
-void bx_hmap_clear(bx_hmap* map);
-void bx_hmap_insert(bx_hmap* map, const void* key, const void* value);
-void bx_hmap_erase(bx_hmap* map, const void* key);
-void* bx_hmap_get(bx_hmap* map, const void* key);
-bool bx_hmap_contains(const bx_hmap* map, const void* key);
