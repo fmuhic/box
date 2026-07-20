@@ -164,7 +164,7 @@
     {                                                                                         \
         if (map->size >= map->grow_at)                                                        \
         {                                                                                     \
-            bx_hmap_##NAME##_resize(map, (uint64_t)map->bucket_count* BX_HMAP_GROWTH);        \
+            bx_hmap_##NAME##_resize(map, (uint64_t)map->bucket_count * BX_HMAP_GROWTH);       \
         }                                                                                     \
                                                                                               \
         uint64_t hash;                                                                        \

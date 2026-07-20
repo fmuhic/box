@@ -91,19 +91,13 @@ else
 static inline void* b2Alloc(int size) { return malloc((size_t)size); }
 static inline void b2Free(void* mem, int size) { (void)size; free(mem); }
 
-// Box2D's own b2GrowAlloc allocates, copies and frees rather than calling
-// realloc, because it routes through its arena allocator. Reproducing that
-// shape matters: bx_darray_reserve does the same, so swapping in realloc here
-// would hand Box2D an advantage the real engine does not have.
+// Deliberately not what Box2D does -- the real b2GrowAlloc allocates, copies and
+// frees via the engine's arena. realloc here matches bx_darray_set_capacity, so
+// push measures container overhead rather than allocator strategy.
 static inline void* b2GrowAlloc(void* oldMem, size_t oldSize, size_t newSize)
 {
-    void* mem = malloc(newSize);
-    if (oldMem != NULL)
-    {
-        memcpy(mem, oldMem, oldSize);
-        free(oldMem);
-    }
-    return mem;
+    (void)oldSize;
+    return realloc(oldMem, newSize);
 }
 SHIM
 fi

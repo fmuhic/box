@@ -98,3 +98,9 @@ target_compile_definitions(box_perf PRIVATE NDEBUG)
 if(BOX_PERF_NATIVE)
     target_compile_options(box_perf PRIVATE -march=native)
 endif()
+
+# Matches the library: without it, the benchmark measures box's cores across a
+# TU boundary while the header-only third-party comparisons get full inlining.
+if(BOX_IPO_SUPPORTED)
+    set_property(TARGET box_perf PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+endif()

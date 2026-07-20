@@ -49,7 +49,9 @@ static double box_iterate(const uint32_t* keys, const uint32_t* misses, uint32_t
 {
     (void)misses;
     bx_darray_bench a;
-    bx_darray_bench_init(&a);
+    // Pre-reserved to match box2d's b2Array_CreateN -- otherwise the two sides
+    // differ in buffer provenance and this compares setup, not the timed op.
+    bx_darray_bench_init_capacity(&a, n);
     for (uint32_t i = 0; i < n; i++)
     {
         bx_darray_bench_push(&a, keys[i]);
@@ -73,7 +75,9 @@ static double box_random_get(const uint32_t* keys, const uint32_t* misses, uint3
 {
     (void)misses;
     bx_darray_bench a;
-    bx_darray_bench_init(&a);
+    // Pre-reserved to match box2d's b2Array_CreateN -- otherwise the two sides
+    // differ in buffer provenance and this compares setup, not the timed op.
+    bx_darray_bench_init_capacity(&a, n);
     for (uint32_t i = 0; i < n; i++)
     {
         bx_darray_bench_push(&a, keys[i]);
@@ -96,7 +100,9 @@ static double box_pop(const uint32_t* keys, const uint32_t* misses, uint32_t n)
 {
     (void)misses;
     bx_darray_bench a;
-    bx_darray_bench_init(&a);
+    // Pre-reserved to match box2d's b2Array_CreateN -- otherwise the two sides
+    // differ in buffer provenance and this compares setup, not the timed op.
+    bx_darray_bench_init_capacity(&a, n);
     for (uint32_t i = 0; i < n; i++)
     {
         bx_darray_bench_push(&a, keys[i]);

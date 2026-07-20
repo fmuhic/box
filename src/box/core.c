@@ -10,6 +10,17 @@ void* bx_alloc(size_t size)
     return malloc(size);
 }
 
+// Mirrors bx_alloc: a zero-byte request frees and yields NULL.
+void* bx_realloc(void* ptr, size_t size)
+{
+    if (size == 0)
+    {
+        free(ptr);
+        return NULL;
+    }
+    return realloc(ptr, size);
+}
+
 void bx_free(void* ptr)
 {
     free(ptr);

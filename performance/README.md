@@ -57,10 +57,25 @@ growing 2x from an initial 8. Only `src/bitset.c` and the header-only
 `b2HashSet` is left out — it stores `uint64` keys with no values and exists to
 track shape pairs, so it is not a map comparison.
 
-The shim's `b2GrowAlloc` allocates, copies and frees rather than calling
-`realloc`, matching what Box2D actually does. That detail is load-bearing:
-`bx_darray_reserve` does the same, and substituting `realloc` would hand Box2D
-an advantage the real engine does not have.
+The shim's `b2GrowAlloc` calls `realloc`, which is *not* what Box2D does — the
+real one allocates, copies and frees, because it routes through the engine's
+arena allocator. The shim deviates deliberately so that it matches
+`bx_darray_set_capacity`: with both sides on `realloc`, the `push` rows measure
+per-element container overhead rather than allocator strategy, which is the
+comparison worth making between two array implementations.
+
+Worth knowing what that hides. `realloc` lets glibc remap pages via `mremap`
+instead of copying on every doubling, and darray used to allocate-copy-free like
+Box2D does. Switching it was the single largest win in this suite:
+
+| n | allocate-copy-free | `realloc` | |
+|---|---|---|---|
+| 10,000 | 0.339 | 0.265 | 1.28x |
+| 200,000 | 3.959 | 0.256 | **15.5x** |
+| 2,000,000 | 3.565 | 0.255 | **14.0x** |
+
+Because the shim now matches, that gap no longer appears in the table — both
+sides sit at ~0.25 ns/op. The `raw_realloc` row is what keeps it visible.
 
 ⚠️ **`flecs_map` rows are not like-for-like.** `ecs_map_t` accepts no hash
 callback, so it is the one table that cannot be given the shared mixer. It
