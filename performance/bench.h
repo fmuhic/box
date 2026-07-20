@@ -75,6 +75,46 @@ extern volatile uint64_t bx_bench_black_hole;
     } while (0)
 #endif
 
+// Shortest region `BX_BENCH_TIME_REPEATED` will accept. Two clock_gettime calls
+// cost tens of nanoseconds between them, so a region has to be several orders of
+// magnitude longer than that before the timer stops being a visible part of the
+// measurement. 20 ms leaves ~6 orders of headroom.
+#define BX_BENCH_MIN_SECONDS 0.02
+
+// Times `body` repeatedly until the measured region is long enough to resolve,
+// then assigns the per-execution time to `out_seconds`.
+//
+// Use this for whole-set operations -- popcount, union -- which are a single
+// O(n) call rather than a loop of n calls. Timing one such call directly
+// reports mostly timer overhead: the scan takes a few hundred nanoseconds and
+// the two clock reads around it cost a good fraction of that. The batch doubles
+// until the region clears the floor, so the total stays within 2x of it.
+//
+// `body` MUST sink its result. It runs in a loop with no other observable
+// effect, so without a sink the optimizer is free to hoist it out entirely and
+// the calibration loop spins forever.
+#define BX_BENCH_TIME_REPEATED(out_seconds, body)            \
+    do                                                       \
+    {                                                        \
+        uint64_t bx_iters = 1;                               \
+        double bx_elapsed = 0.0;                             \
+        for (;;)                                             \
+        {                                                    \
+            double bx_t0 = bx_bench_now();                   \
+            for (uint64_t bx_i = 0; bx_i < bx_iters; bx_i++) \
+            {                                                \
+                body;                                        \
+            }                                                \
+            bx_elapsed = bx_bench_now() - bx_t0;             \
+            if (bx_elapsed >= BX_BENCH_MIN_SECONDS)          \
+            {                                                \
+                break;                                       \
+            }                                                \
+            bx_iters *= 2;                                   \
+        }                                                    \
+        (out_seconds) = bx_elapsed / (double)bx_iters;       \
+    } while (0)
+
 // ---------------------------------------------------------------------------
 // Keys
 // ---------------------------------------------------------------------------

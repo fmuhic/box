@@ -49,5 +49,14 @@ add_subdirectory(tests)
 option(BOX_BUILD_PERF "Build the performance suite" OFF)
 option(BOX_PERF_NATIVE "Build the performance suite with -march=native" ON)
 if(BOX_BUILD_PERF)
+    # -march=native has to reach the box library too, not just box_perf. box's
+    # cores (hmap_core.c, spset_core.c, bitset.c) compile here; if only box_perf
+    # gets native, box is measured with generic codegen while the header-only
+    # rivals inlined into box_perf get the full instruction set. LTO recompiles
+    # some of it at link time but not equivalently. This build dir is perf-only
+    # (./perf.sh uses build-perf/), so widening the library's ISA is contained.
+    if(BOX_PERF_NATIVE)
+        target_compile_options(box PRIVATE -march=native)
+    endif()
     add_subdirectory(performance)
 endif()

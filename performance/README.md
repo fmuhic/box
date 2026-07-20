@@ -14,8 +14,12 @@ open-source C implementations, across insert / lookup / erase / iterate.
 ```
 
 `perf.sh` configures a Release build in `build-perf/`, compiles the suite at
-`-O3 -DNDEBUG -march=native`, and runs it pinned to CPU 0. Every argument is
-forwarded to the binary; `./perf.sh -h` lists them all.
+`-O3 -DNDEBUG -march=native`, and runs it pinned to a middle physical core (and
+its SMT sibling) rather than CPU 0, which carries the interrupt load. Every
+argument is forwarded to the binary; `./perf.sh -h` lists them all.
+
+`--repeat-process K` is the exception — `perf.sh` consumes it rather than
+forwarding it. See *Run-to-run variance* below.
 
 ## Enabling the third-party comparisons
 
@@ -115,8 +119,12 @@ unit and everything else still builds.
 
 ## Getting numbers you can trust
 
-The `spread` column is `(max-min)/median` across repetitions. **Above roughly
-20% the ranking is noise, not signal.** To bring it down:
+The `noise` column is the median absolute deviation over the repetitions,
+divided by the median. It measures how much the *typical* sample deviates, so a
+single descheduled repetition barely moves it — unlike the old `(max-min)/median`
+spread, which one preempted sample could swing by hundreds of percent while the
+reported figure had not changed. **Above roughly 5% treat the ranking of nearby
+rows as unresolved on that run.** To bring it down:
 
 ```sh
 sudo cpupower frequency-set -g performance          # stop frequency scaling
@@ -124,13 +132,63 @@ echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo   # stop thermal
 ```
 
 `perf.sh` checks both and warns if they are unset. Beyond that: close other
-work, raise `-r`, and compare `best` rather than `ns/op` when spread is high —
+work, raise `-r`, and compare `best` rather than `ns/op` when noise is high —
 the fastest sample is the one least contaminated by interference.
+
+**Under WSL2 (and most VMs) neither knob is reachable** — the `cpufreq` and
+`intel_pstate` sysfs trees do not exist in the guest, and frequency, turbo, and
+physical-core placement all belong to the host. `perf.sh` detects this and says
+so instead of reporting a clean check it never ran. There is no fix from inside
+the guest; use `--repeat-process` to measure how much this costs you and treat
+anything inside that floor as unresolvable.
+
+### Run-to-run variance
+
+The `noise` column only sees *within-process* variance. Every repetition in one
+process shares a heap layout, a binary mapping, and one set of ASLR offsets, and
+those shift timings by a few percent while staying fixed for the life of the
+process — so no amount of `-r` exposes them. Re-running the binary is the only
+way to resample that component, and it is usually the larger one.
+
+```sh
+./perf.sh --repeat-process 10 -f darray     # 10 processes, aggregated
+```
+
+This runs the binary ten times and reports, per row, the **median across
+processes** and a `drift` column: the max-min across processes over that median.
+`drift` is the real floor. **A difference between two runs smaller than the
+worst-row drift is not a result** — it is layout noise. Use it to decide whether
+a change you made actually moved anything: if the delta is under the floor, you
+have not measured a difference.
+
+`drift` deliberately uses the extremes, not the MAD: a slow layout is an outcome
+you can genuinely land on from one run to the next, not a scheduling artefact to
+trim away.
 
 For hardware counters, the binary works under `perf` directly:
 
 ```sh
 perf stat -e cache-misses,branch-misses ./build-perf/performance/box_perf -f hmap/box
+```
+
+### Verifying the darray stays inlined
+
+The darray core is `static inline` in the header on purpose: moving any of it
+out of line costs roughly 40% of push throughput, and **every test still
+passes** when you do (see the darray invariant in the top-level `CLAUDE.md`).
+The test suite cannot catch that regression; the disassembly can. After a perf
+build, confirm that `box_push` contains no call back into the darray core and
+that no out-of-line `bx_darray_*` symbol was emitted at all:
+
+```sh
+# Want: 0. Any call to a bx_darray_* / *_grow symbol means it went out of line.
+objdump -d build-perf/performance/box_perf \
+  | awk '/<box_push>:/{f=1} f&&/^$/{f=0} f' \
+  | grep -cE 'call.*(bx_darray|_grow)'
+
+# Want: only bx_bench_register_darray. Any bx_darray_* entry here is a function
+# that should have been inlined but was compiled standalone.
+objdump -d build-perf/performance/box_perf | grep -E '<.*darray.*>:'
 ```
 
 ## Methodology
@@ -165,7 +223,23 @@ common way microbenchmarks lie.
 **Aggregation** discards the fastest and slowest quarter of repetitions and
 averages the rest, which is what the reference benchmark does to blunt
 scheduling noise. `best` is reported alongside for when the trimmed mean is
-still noisy.
+still noisy, and `noise` (relative MAD) qualifies how much to trust the row.
+
+**Cases are interleaved, not batched.** Each pass runs every case once before
+the next pass begins, rather than all repetitions of a case back to back. Drift
+over a run — thermal, background load, allocator arena warming — then lands on
+every case equally and cancels out of the `vs box` comparison, instead of
+biasing whichever case happened to be running while the machine changed. A full
+untimed warmup pass over all cases precedes the first measured pass, so no case
+is timed cold merely because it registered first. One consequence: a filtered
+run (`-f hmap`) warms fewer cases than the full suite and can report slightly
+different absolute numbers for the same row — the comparison within a run is
+unaffected, but do not compare absolute ns/op across different filters.
+
+**Whole-set operations are batched to clear the timer.** `popcount` and `union`
+are a single O(n) call, far too short to bracket with two clock reads directly —
+the reads would be a large fraction of the measurement. `BX_BENCH_TIME_REPEATED`
+runs the operation enough times to exceed a 20 ms floor and divides back out.
 
 **`insert` versus `insert_reserved`** separates the two costs inside insertion:
 `insert` grows from empty and pays every rehash, `insert_reserved` sizes the

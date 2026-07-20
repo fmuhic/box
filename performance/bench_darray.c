@@ -2,6 +2,7 @@
 
 #include "box/darray.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 BX_DARRAY_DECLARE(uint32_t, bench)
@@ -139,6 +140,10 @@ static double raw_push(const uint32_t* keys, const uint32_t* misses, uint32_t n)
         {
             cap = cap ? cap * 2 : 8;
             a = (uint32_t*)realloc(a, (size_t)cap * sizeof(uint32_t));
+            // Matches box's bx_realloc: an assert, so it compiles out under the
+            // perf build's NDEBUG and the timed loop stays identical codegen to
+            // box's. A checkless raw floor would segfault instead of diagnosing.
+            assert(a != NULL && "raw_push: allocation failed");
         }
         a[size++] = keys[i];
     }
@@ -153,6 +158,7 @@ static double raw_iterate(const uint32_t* keys, const uint32_t* misses, uint32_t
 {
     (void)misses;
     uint32_t* a = (uint32_t*)malloc((size_t)n * sizeof(uint32_t));
+    assert(a != NULL && "raw_iterate: allocation failed");
     for (uint32_t i = 0; i < n; i++)
     {
         a[i] = keys[i];

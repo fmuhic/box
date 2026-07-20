@@ -74,17 +74,19 @@ static double b2_popcount(const uint32_t* keys, const uint32_t* misses, uint32_t
         b2SetBit(&s, i);
     }
 
-    double t0 = bx_bench_now();
-    int total = 0;
-    for (uint32_t i = 0; i < s.blockCount; i++)
-    {
-        total += b2PopCount64(s.bits[i]);
-    }
-    double t1 = bx_bench_now();
+    // Batched to clear the timer floor, matching bench_bitset.c's box row.
+    double per_scan;
+    BX_BENCH_TIME_REPEATED(per_scan, {
+        int total = 0;
+        for (uint32_t i = 0; i < s.blockCount; i++)
+        {
+            total += b2PopCount64(s.bits[i]);
+        }
+        BX_BENCH_SINK(total);
+    });
 
-    BX_BENCH_SINK(total);
     b2DestroyBitSet(&s);
-    return t1 - t0;
+    return per_scan;
 }
 
 static double b2_union(const uint32_t* keys, const uint32_t* misses, uint32_t n)
@@ -103,14 +105,16 @@ static double b2_union(const uint32_t* keys, const uint32_t* misses, uint32_t n)
         b2SetBit(&b, keys[i] % n);
     }
 
-    double t0 = bx_bench_now();
-    b2InPlaceUnion(&a, &b);
-    double t1 = bx_bench_now();
+    // Batched to clear the timer floor, matching bench_bitset.c's box row.
+    double per_scan;
+    BX_BENCH_TIME_REPEATED(per_scan, {
+        b2InPlaceUnion(&a, &b);
+        BX_BENCH_SINK(a.bits[0]);
+    });
 
-    BX_BENCH_SINK(a.bits[0]);
     b2DestroyBitSet(&a);
     b2DestroyBitSet(&b);
-    return t1 - t0;
+    return per_scan;
 }
 
 // ---------------------------------------------------------------------------

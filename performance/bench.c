@@ -121,18 +121,38 @@ typedef struct bx_bench_stats
     double best; // fastest sample, the least noise-contaminated estimate
     double median;
     double trimmed; // mean after dropping the fastest and slowest 25%
-    double spread;  // (max-min)/median, a noise indicator
+    double noise;   // median absolute deviation / median
 } bx_bench_stats;
 
-static bx_bench_stats summarize(double* samples, uint32_t count)
+static double median_of_sorted(const double* sorted, uint32_t count)
+{
+    return (count % 2) ? sorted[count / 2]
+                       : 0.5 * (sorted[count / 2 - 1] + sorted[count / 2]);
+}
+
+// `scratch` must have room for `count` doubles; it holds the deviations used
+// for the MAD so this stays allocation-free.
+static bx_bench_stats summarize(double* samples, double* scratch, uint32_t count)
 {
     bx_bench_stats s;
     qsort(samples, count, sizeof(double), cmp_double);
 
     s.best = samples[0];
-    s.median = (count % 2) ? samples[count / 2]
-                           : 0.5 * (samples[count / 2 - 1] + samples[count / 2]);
-    s.spread = s.median > 0.0 ? (samples[count - 1] - samples[0]) / s.median : 0.0;
+    s.median = median_of_sorted(samples, count);
+
+    // Relative MAD, not (max-min)/median. The old spread was a pure
+    // extreme-order statistic: a single descheduled sample moved it by
+    // hundreds of percent while the trimmed mean it was supposed to qualify
+    // did not budge, so it fired constant false alarms. MAD ignores the tails
+    // and reports what the bulk of the samples actually did.
+    for (uint32_t i = 0; i < count; i++)
+    {
+        double d = samples[i] - s.median;
+        scratch[i] = d < 0.0 ? -d : d;
+    }
+    qsort(scratch, count, sizeof(double), cmp_double);
+    double mad = median_of_sorted(scratch, count);
+    s.noise = s.median > 0.0 ? mad / s.median : 0.0;
 
     // Drop the top and bottom quarter, average the rest. The reference C/C++
     // hash-table benchmark does the same to blunt background scheduling noise.
@@ -254,51 +274,84 @@ void bx_bench_run_all(const bx_bench_config* cfg)
         exit(1);
     }
 
-    double* samples = (double*)malloc(cfg->reps * sizeof(double));
     bx_bench_result* results =
         (bx_bench_result*)malloc(BX_BENCH_MAX_CASES * sizeof(bx_bench_result));
-    if (samples == NULL || results == NULL)
+    if (results == NULL)
     {
         fprintf(stderr, "bench: out of memory\n");
         exit(1);
     }
-    uint32_t result_count = 0;
 
+    // Select the matching cases up front so the measurement loop below can walk
+    // them by index without re-testing the filter.
+    uint32_t result_count = 0;
     for (uint32_t c = 0; c < g_case_count; c++)
     {
-        const bx_bench_entry* e = &g_cases[c];
-        if (!matches(e, cfg->filter))
+        if (matches(&g_cases[c], cfg->filter))
         {
-            continue;
+            results[result_count++].entry = &g_cases[c];
         }
+    }
+    if (result_count == 0)
+    {
+        fprintf(stderr, "bench: no cases match filter '%s'\n",
+                cfg->filter ? cfg->filter : "");
+        free(results);
+        bx_keys_free(keys);
+        bx_keys_free(misses);
+        return;
+    }
 
-        // Warmup pulls code and data into cache and lets the CPU settle at a
-        // steady clock before anything is recorded.
-        for (uint32_t w = 0; w < cfg->warmup; w++)
+    // samples[case][rep], plus one row of scratch for the MAD.
+    double* samples = (double*)malloc((size_t)result_count * cfg->reps * sizeof(double));
+    double* scratch = (double*)malloc(cfg->reps * sizeof(double));
+    if (samples == NULL || scratch == NULL)
+    {
+        fprintf(stderr, "bench: out of memory\n");
+        exit(1);
+    }
+
+    // Warmup pulls code and data into cache and lets the CPU settle at a steady
+    // clock before anything is recorded.
+    for (uint32_t w = 0; w < cfg->warmup; w++)
+    {
+        for (uint32_t c = 0; c < result_count; c++)
         {
-            e->fn(keys, misses, cfg->n);
+            results[c].entry->fn(keys, misses, cfg->n);
         }
-        for (uint32_t r = 0; r < cfg->reps; r++)
-        {
-            samples[r] = e->fn(keys, misses, cfg->n);
-        }
+    }
 
-        bx_bench_result* out = &results[result_count++];
-        out->entry = e;
-        out->stats = summarize(samples, cfg->reps);
-        out->ns_per_op = out->stats.trimmed * 1e9 / (double)cfg->n;
-
-        // Only animate on a terminal: piped into a file the carriage returns
-        // would just concatenate every case onto one line.
-        if (!cfg->csv && isatty(fileno(stderr)))
+    // Reps are the outer loop and cases the inner one, so every case is sampled
+    // once per pass. Running all reps of a case back to back instead would tie
+    // each case to one slice of wall time, and any drift over the run -- thermal,
+    // background load, page cache warming -- would land on whichever cases
+    // happened to be running, confounded with the case itself. Interleaved, drift
+    // hits every case equally and cancels out of the comparison.
+    for (uint32_t r = 0; r < cfg->reps; r++)
+    {
+        for (uint32_t c = 0; c < result_count; c++)
         {
-            fprintf(stderr, "\r  running %-28s", e->op);
-            fflush(stderr);
+            const bx_bench_entry* e = results[c].entry;
+            samples[(size_t)c * cfg->reps + r] = e->fn(keys, misses, cfg->n);
+
+            // Only animate on a terminal: piped into a file the carriage returns
+            // would just concatenate every case onto one line.
+            if (!cfg->csv && isatty(fileno(stderr)))
+            {
+                fprintf(stderr, "\r  rep %u/%u  %-28s", r + 1, cfg->reps, e->op);
+                fflush(stderr);
+            }
         }
     }
     if (!cfg->csv && isatty(fileno(stderr)))
     {
-        fprintf(stderr, "\r%-40s\r", "");
+        fprintf(stderr, "\r%-48s\r", "");
+    }
+
+    for (uint32_t c = 0; c < result_count; c++)
+    {
+        results[c].stats = summarize(&samples[(size_t)c * cfg->reps], scratch, cfg->reps);
+        results[c].ns_per_op = results[c].stats.trimmed * 1e9 / (double)cfg->n;
     }
 
     for (uint32_t i = 0; i < result_count; i++)
@@ -312,14 +365,14 @@ void bx_bench_run_all(const bx_bench_config* cfg)
 
     if (cfg->csv)
     {
-        printf("group,impl,op,n,ns_per_op,best_ns_per_op,spread_pct,vs_baseline\n");
+        printf("group,impl,op,n,ns_per_op,best_ns_per_op,noise_pct,vs_baseline\n");
         for (uint32_t i = 0; i < result_count; i++)
         {
             const bx_bench_entry* e = results[i].entry;
             double base = baseline_for(results, result_count, e);
-            printf("%s,%s,%s,%u,%.3f,%.3f,%.1f,%.3f\n", e->group, e->impl, e->op, cfg->n,
+            printf("%s,%s,%s,%u,%.6g,%.6g,%.2f,%.4f\n", e->group, e->impl, e->op, cfg->n,
                    results[i].ns_per_op, results[i].stats.best * 1e9 / (double)cfg->n,
-                   results[i].stats.spread * 100.0,
+                   results[i].stats.noise * 100.0,
                    base > 0.0 ? results[i].ns_per_op / base : 0.0);
         }
         goto done;
@@ -328,6 +381,7 @@ void bx_bench_run_all(const bx_bench_config* cfg)
     printf("\n  n = %u elements, %u reps (+%u warmup), seed %llu\n", cfg->n, cfg->reps,
            cfg->warmup, (unsigned long long)cfg->seed);
     printf("  ns/op is the trimmed mean; best is the fastest single rep.\n");
+    printf("  noise is the median absolute deviation as a fraction of the median.\n");
     printf("  vs box: >1.00 means slower than box, <1.00 means faster.\n\n");
 
     const char* group = NULL;
@@ -345,7 +399,7 @@ void bx_bench_run_all(const bx_bench_config* cfg)
             group = e->group;
             printf("  %s\n", group);
             printf("    %-20s %-14s %10s %10s %8s %9s\n", "operation", "impl", "ns/op", "best",
-                   "spread", "vs box");
+                   "noise", "vs box");
             printf("    %-20s %-14s %10s %10s %8s %9s\n", "--------------------",
                    "--------------", "----------", "----------", "--------", "---------");
         }
@@ -362,17 +416,20 @@ void bx_bench_run_all(const bx_bench_config* cfg)
             snprintf(ratio_buf, sizeof(ratio_buf), "%.2fx", ratio);
         }
 
-        // Three decimals: whole-set ops like popcount touch 64 bits per
-        // instruction, so their per-element cost rounds to zero at two.
-        printf("    %-20s %-14s %10.3f %10.3f %7.0f%% %9s\n", e->op, e->impl,
+        // %g, not a fixed number of decimals: whole-set ops like popcount touch
+        // 64 bits per instruction, so their per-element cost is a thousandth of
+        // a nanosecond and any fixed width that suits the per-element rows
+        // flattens them to 0.001. Four significant digits suits both.
+        printf("    %-20s %-14s %10.4g %10.4g %6.1f%%  %9s\n", e->op, e->impl,
                results[i].ns_per_op, results[i].stats.best * 1e9 / (double)cfg->n,
-               results[i].stats.spread * 100.0, ratio_buf);
+               results[i].stats.noise * 100.0, ratio_buf);
     }
     printf("\n");
 
 done:
     free(results);
     free(samples);
+    free(scratch);
     bx_keys_free(keys);
     bx_keys_free(misses);
 }

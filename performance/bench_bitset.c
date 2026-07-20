@@ -63,16 +63,15 @@ static double box_popcount(const uint32_t* keys, const uint32_t* misses, uint32_
         bx_bitset_set_fast(&s, i);
     }
 
-    // One popcount is a whole-set scan, so it is already O(n); repeating it n
-    // times would measure minutes. Amortise a single pass over n for a
-    // per-element figure comparable to the other rows.
-    double t0 = bx_bench_now();
-    uint32_t total = bx_bitset_popcount(&s);
-    double t1 = bx_bench_now();
+    // One popcount is a whole-set scan, already O(n), so it is timed once and
+    // amortised over n for a per-element figure comparable to the other rows.
+    // A single scan is far too short to time directly, so it is batched until
+    // the region resolves and divided back out.
+    double per_scan;
+    BX_BENCH_TIME_REPEATED(per_scan, BX_BENCH_SINK(bx_bitset_popcount(&s)));
 
-    BX_BENCH_SINK(total);
     bx_bitset_drop(&s);
-    return t1 - t0;
+    return per_scan;
 }
 
 static double box_union(const uint32_t* keys, const uint32_t* misses, uint32_t n)
@@ -92,14 +91,18 @@ static double box_union(const uint32_t* keys, const uint32_t* misses, uint32_t n
         bx_bitset_set_fast(&b, keys[i] % n);
     }
 
-    double t0 = bx_bench_now();
-    bx_bitset_union(&a, &b);
-    double t1 = bx_bench_now();
+    // Batched like popcount above. Union is idempotent, so repeats past the
+    // first operate on an already-unioned `a` -- the work is identical either
+    // way, since every block is OR'd regardless of its contents.
+    double per_scan;
+    BX_BENCH_TIME_REPEATED(per_scan, {
+        bx_bitset_union(&a, &b);
+        BX_BENCH_SINK(a.bits[0]);
+    });
 
-    BX_BENCH_SINK(bx_bitset_popcount(&a));
     bx_bitset_drop(&a);
     bx_bitset_drop(&b);
-    return t1 - t0;
+    return per_scan;
 }
 
 // ---------------------------------------------------------------------------
