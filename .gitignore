@@ -65,3 +65,7 @@ dkms.conf
 .claude/
 CLAUDE.md
 
+
+# performance suite: downloaded, not vendored
+performance/third_party/*.h
+build-perf/

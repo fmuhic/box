@@ -344,3 +344,31 @@ spset:  id 7 -> (1.0, 2.0)
 spset:  id 1500 -> (3.0, 4.0)
 bitset: 2 set, bit 70 = 1
 ```
+
+---
+
+## Benchmarks
+
+```sh
+./perf.sh                       # all containers, 200k elements
+./perf.sh -f hmap               # one group
+./perf.sh -f lookup             # one operation across all containers
+./perf.sh -n 2000000 -r 15      # bigger working set, more repetitions
+./perf.sh --csv > results.csv   # machine-readable
+```
+
+Builds a separate Release tree in `build-perf/` at `-O3 -march=native` and pins
+to one core. The normal build is unaffected.
+
+To also compare against khash, Verstable and stb_ds:
+
+```sh
+./performance/third_party/fetch.sh
+```
+
+They are downloaded, not vendored, and the suite runs box-only without them.
+
+Check the `spread` column before trusting a result — above ~20% the ranking is
+noise. `perf.sh` warns when CPU frequency scaling is the reason.
+
+See [performance/README.md](performance/README.md) for methodology.

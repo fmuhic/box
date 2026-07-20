@@ -35,3 +35,10 @@ target_include_directories(box PUBLIC
 
 enable_testing()
 add_subdirectory(tests)
+
+# Off by default so the normal build stays fast; ./perf.sh turns it on.
+option(BOX_BUILD_PERF "Build the performance suite" OFF)
+option(BOX_PERF_NATIVE "Build the performance suite with -march=native" ON)
+if(BOX_BUILD_PERF)
+    add_subdirectory(performance)
+endif()
