@@ -336,12 +336,18 @@ void bx_bench_run_all(const bx_bench_config* cfg)
         const bx_bench_entry* e = results[i].entry;
         if (group == NULL || strcmp(group, e->group) != 0)
         {
+            // Blank line between groups, and the table sits one level in from
+            // the group name, so a long report stays scannable.
+            if (group != NULL)
+            {
+                printf("\n");
+            }
             group = e->group;
             printf("  %s\n", group);
-            printf("  %-22s %-12s %10s %10s %8s %9s\n", "operation", "impl", "ns/op", "best",
+            printf("    %-20s %-14s %10s %10s %8s %9s\n", "operation", "impl", "ns/op", "best",
                    "spread", "vs box");
-            printf("  %-22s %-12s %10s %10s %8s %9s\n", "----------------------",
-                   "------------", "----------", "----------", "--------", "---------");
+            printf("    %-20s %-14s %10s %10s %8s %9s\n", "--------------------",
+                   "--------------", "----------", "----------", "--------", "---------");
         }
 
         double base = baseline_for(results, result_count, e);
@@ -358,7 +364,7 @@ void bx_bench_run_all(const bx_bench_config* cfg)
 
         // Three decimals: whole-set ops like popcount touch 64 bits per
         // instruction, so their per-element cost rounds to zero at two.
-        printf("  %-22s %-12s %10.3f %10.3f %7.0f%% %9s\n", e->op, e->impl,
+        printf("    %-20s %-14s %10.3f %10.3f %7.0f%% %9s\n", e->op, e->impl,
                results[i].ns_per_op, results[i].stats.best * 1e9 / (double)cfg->n,
                results[i].stats.spread * 100.0, ratio_buf);
     }
