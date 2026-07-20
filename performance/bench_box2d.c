@@ -18,6 +18,8 @@
 #include "container.h"
 #include "ctz.h"
 
+#include <string.h>
+
 b2DeclareArrayNative(uint32_t);
 
 static double b2_set(const uint32_t* keys, const uint32_t* misses, uint32_t n)
@@ -144,6 +146,8 @@ static double b2_push_reserved(const uint32_t* keys, const uint32_t* misses, uin
     (void)misses;
     b2Array(uint32_t) a;
     b2Array_CreateN(a, (int)n);
+    // Page the buffer in before timing; see box_push_reserved in bench_darray.c.
+    memset(a.data, 0, (size_t)n * sizeof(*a.data));
 
     double t0 = bx_bench_now();
     for (uint32_t i = 0; i < n; i++)
@@ -154,6 +158,35 @@ static double b2_push_reserved(const uint32_t* keys, const uint32_t* misses, uin
 
     BX_BENCH_SINK(a.count);
     b2Array_Destroy(a);
+    return t1 - t0;
+}
+
+// Steady-state push into a reused, paged-in b2Array; see box_push_warm.
+static double b2_push_warm(const uint32_t* keys, const uint32_t* misses, uint32_t n)
+{
+    (void)misses;
+    static b2Array(uint32_t) a;
+    static uint32_t provisioned = 0;
+    if (provisioned < n)
+    {
+        if (provisioned > 0)
+        {
+            b2Array_Destroy(a);
+        }
+        b2Array_CreateN(a, (int)n);
+        memset(a.data, 0, (size_t)n * sizeof(*a.data));
+        provisioned = n;
+    }
+    a.count = 0; // clear, keeping the buffer and its resident pages
+
+    double t0 = bx_bench_now();
+    for (uint32_t i = 0; i < n; i++)
+    {
+        b2Array_Push(a, keys[i]);
+    }
+    double t1 = bx_bench_now();
+
+    BX_BENCH_SINK(a.count);
     return t1 - t0;
 }
 
@@ -235,6 +268,7 @@ void bx_bench_register_box2d(void)
 
     bx_bench_add("darray", "box2d", "push", b2_push);
     bx_bench_add("darray", "box2d", "push_reserved", b2_push_reserved);
+    bx_bench_add("darray", "box2d", "push_warm", b2_push_warm);
     bx_bench_add("darray", "box2d", "iterate", b2_iterate);
     bx_bench_add("darray", "box2d", "random_get", b2_random_get);
     bx_bench_add("darray", "box2d", "pop", b2_pop);

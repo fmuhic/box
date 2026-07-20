@@ -236,6 +236,8 @@ static double fl_vec_push_reserved(const uint32_t* keys, const uint32_t* misses,
     (void)misses;
     ecs_vec_t v;
     ecs_vec_init(NULL, &v, (ecs_size_t)sizeof(uint32_t), (int32_t)n);
+    // Page the buffer in before timing; see box_push_reserved in bench_darray.c.
+    memset(v.array, 0, (size_t)n * sizeof(uint32_t));
 
     double t0 = bx_bench_now();
     for (uint32_t i = 0; i < n; i++)

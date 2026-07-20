@@ -189,7 +189,34 @@ double stdvec_push_reserved(const uint32_t* keys, const uint32_t* misses, uint32
 {
     (void)misses;
     std::vector<uint32_t> v;
-    v.reserve(n);
+    // Page the buffer in before timing; see box_push_reserved in bench_darray.c.
+    // reserve() cannot be pre-touched legally -- the capacity past size() is
+    // unconstructed -- so resize(n) constructs and faults n elements, then
+    // clear() drops the size back to 0 while keeping that capacity resident.
+    v.resize(n);
+    v.clear();
+
+    double t0 = bx_bench_now();
+    for (uint32_t i = 0; i < n; i++)
+    {
+        v.push_back(keys[i]);
+    }
+    double t1 = bx_bench_now();
+
+    BX_BENCH_SINK(v.size());
+    return t1 - t0;
+}
+
+// Steady-state push into a reused, paged-in vector; see box_push_warm.
+double stdvec_push_warm(const uint32_t* keys, const uint32_t* misses, uint32_t n)
+{
+    (void)misses;
+    static std::vector<uint32_t> v;
+    if (v.capacity() < n)
+    {
+        v.resize(n); // constructs + faults the pages
+    }
+    v.clear(); // size 0, capacity and resident pages kept
 
     double t0 = bx_bench_now();
     for (uint32_t i = 0; i < n; i++)
@@ -399,6 +426,7 @@ extern "C" void bx_bench_register_cpp(void)
 
     bx_bench_add("darray", "std_vector", "push", stdvec_push);
     bx_bench_add("darray", "std_vector", "push_reserved", stdvec_push_reserved);
+    bx_bench_add("darray", "std_vector", "push_warm", stdvec_push_warm);
     bx_bench_add("darray", "std_vector", "iterate", stdvec_iterate);
     bx_bench_add("darray", "std_vector", "random_get", stdvec_random_get);
     bx_bench_add("darray", "std_vector", "pop", stdvec_pop);

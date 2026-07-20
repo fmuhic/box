@@ -246,6 +246,31 @@ runs the operation enough times to exceed a 20 ms floor and divides back out.
 table up front and measures probing alone. The gap between them is the growth
 policy's cost.
 
+**The three darray `push` rows** separate what a push costs in three regimes:
+
+- `push` — grow from empty. Pays every reallocation and the first-touch page
+  faults of a buffer built during the timed loop. This is the cold "build a
+  darray from scratch" cost, and it carries the group's highest run-to-run
+  drift, because that first-touch and reallocation cost is really the
+  allocator's, and it swings with heap layout.
+- `push_reserved` — size the buffer up front, then fill it. The buffer is
+  **paged in before the timer** (a `memset` after the reserve), so this is the
+  no-growth store cost with the allocator's first-touch faults kept out. Without
+  that pre-fault the row measured mostly the fault-in of a fresh mapping, which
+  made it noisier than — and sometimes slower than — `push` itself, which is
+  backwards for a row that does strictly less work.
+- `push_warm` — one buffer, paged in once, then `clear()`ed and refilled every
+  repetition: the game-loop pattern where a darray is kept across frames rather
+  than reallocated. With allocation and paging out of the loop entirely this is
+  the steady-state throughput, and it has by far the lowest drift, which makes
+  it the row to watch for a real regression. The `raw_realloc` `push_warm` row
+  is the memory-bandwidth ceiling: with no per-element capacity check it
+  vectorizes to bulk stores and runs several times faster than any real push —
+  the gap is the price of the bounds check every dynamic array pays, not slack
+  in box. `push_warm` reads a touch slower than `push_reserved` only because the
+  reused buffer must be `static`, which costs a little codegen; it hits every
+  library's row equally, so the comparison across them stays fair.
+
 ## What is not measured
 
 - **Memory.** The suite reports time only. Peak RSS across repetitions is too
