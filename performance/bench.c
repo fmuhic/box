@@ -302,14 +302,21 @@ void bx_bench_run_all(const bx_bench_config* cfg)
         return;
     }
 
-    // samples[case][rep], plus one row of scratch for the MAD.
+    // samples[case][rep], plus one row of scratch for the MAD and one
+    // permutation of the case indices reshuffled each rep (see the run loop).
     double* samples = (double*)malloc((size_t)result_count * cfg->reps * sizeof(double));
     double* scratch = (double*)malloc(cfg->reps * sizeof(double));
-    if (samples == NULL || scratch == NULL)
+    uint32_t* order = (uint32_t*)malloc(result_count * sizeof(uint32_t));
+    if (samples == NULL || scratch == NULL || order == NULL)
     {
         fprintf(stderr, "bench: out of memory\n");
         exit(1);
     }
+    for (uint32_t c = 0; c < result_count; c++)
+    {
+        order[c] = c;
+    }
+    uint64_t order_state = cfg->seed ^ 0x5b3cc1a7f2e9d4bULL;
 
     // Warmup pulls code and data into cache and lets the CPU settle at a steady
     // clock before anything is recorded.
@@ -327,10 +334,29 @@ void bx_bench_run_all(const bx_bench_config* cfg)
     // background load, page cache warming -- would land on whichever cases
     // happened to be running, confounded with the case itself. Interleaved, drift
     // hits every case equally and cancels out of the comparison.
+    //
+    // The order of cases *within* a pass is reshuffled every rep. A fixed order
+    // cancels time-varying drift but not allocator state: a case registered late
+    // always runs on a heap that every earlier case has already fragmented, and
+    // for a grow-from-empty case that reallocation cost is real and systematic --
+    // fixed order silently penalises whichever container the later benchmark
+    // happens to test. Shuffling makes every case see the full spread of heap
+    // states across its reps, so the bias averages out instead of attaching to
+    // one row. The permutation is seed-derived, so runs stay reproducible.
     for (uint32_t r = 0; r < cfg->reps; r++)
     {
-        for (uint32_t c = 0; c < result_count; c++)
+        // Fisher-Yates: a fresh permutation of the case indices for this rep.
+        for (uint32_t i = result_count; i > 1; i--)
         {
+            uint32_t j = (uint32_t)(splitmix64(&order_state) % i);
+            uint32_t tmp = order[i - 1];
+            order[i - 1] = order[j];
+            order[j] = tmp;
+        }
+
+        for (uint32_t k = 0; k < result_count; k++)
+        {
+            uint32_t c = order[k];
             const bx_bench_entry* e = results[c].entry;
             samples[(size_t)c * cfg->reps + r] = e->fn(keys, misses, cfg->n);
 
@@ -430,6 +456,7 @@ done:
     free(results);
     free(samples);
     free(scratch);
+    free(order);
     bx_keys_free(keys);
     bx_keys_free(misses);
 }
