@@ -65,6 +65,58 @@ else
     mv "$tmp"/STC-main/include/stc ./stc
 fi
 
+# Box2D: only bitset.c and its two headers are needed. Box2D's own core.h pulls
+# in the whole engine, so a shim providing just the three things bitset.c uses
+# is written here instead of vendoring it.
+if [ -d "box2d" ]; then
+    echo "  Box2D (bitset): already present, skipping"
+else
+    echo "  Box2D (bitset): downloading"
+    mkdir -p box2d
+    for f in bitset.h bitset.c ctz.h container.h; do
+        fetch "  box2d/$f" "https://raw.githubusercontent.com/erincatto/box2d/main/src/$f" "box2d/$f"
+    done
+    cat > box2d/core.h <<'SHIM'
+// Not from Box2D. Shim supplying the only three things src/bitset.c needs from
+// Box2D's core.h, so the file compiles without the rest of the engine.
+#pragma once
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#define B2_ASSERT(x) assert(x)
+#define B2_UNUSED(...) (void)sizeof(__VA_ARGS__)
+#define B2_RESTRICT restrict
+#define B2_INLINE static inline
+#define B2_NULL_INDEX (-1)
+static inline void* b2Alloc(int size) { return malloc((size_t)size); }
+static inline void b2Free(void* mem, int size) { (void)size; free(mem); }
+
+// Box2D's own b2GrowAlloc allocates, copies and frees rather than calling
+// realloc, because it routes through its arena allocator. Reproducing that
+// shape matters: bx_darray_reserve does the same, so swapping in realloc here
+// would hand Box2D an advantage the real engine does not have.
+static inline void* b2GrowAlloc(void* oldMem, size_t oldSize, size_t newSize)
+{
+    void* mem = malloc(newSize);
+    if (oldMem != NULL)
+    {
+        memcpy(mem, oldMem, oldSize);
+        free(oldMem);
+    }
+    return mem;
+}
+SHIM
+fi
+
+# flecs: the amalgamated distribution. Large (~2.5 MB of C) and it noticeably
+# lengthens the perf build, but it is the only source of a sparse-set comparison.
+fetch "flecs (header)" \
+      "https://raw.githubusercontent.com/SanderMertens/flecs/master/distr/flecs.h" \
+      "flecs.h"
+fetch "flecs (source)" \
+      "https://raw.githubusercontent.com/SanderMertens/flecs/master/distr/flecs.c" \
+      "flecs.c"
+
 echo
 echo "Done. Re-run cmake so the build picks them up:"
 echo "  ./perf.sh"

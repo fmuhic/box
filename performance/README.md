@@ -38,6 +38,37 @@ which is gitignored:
 | [stb_ds](https://github.com/nothings/stb) | C | open addressing, separate key/value storage | public domain / MIT |
 | [ankerl::unordered_dense](https://github.com/martinus/unordered_dense) | C++17 | **Robin Hood** + backward shift, buckets hold an index into a dense vector | MIT |
 
+Two more come from real engines rather than container libraries:
+
+| Library | Structure | Compared against |
+|---|---|---|
+| [flecs](https://github.com/SanderMertens/flecs) | `ecs_sparse_t`, `ecs_vec_t`, `ecs_map_t` | spset, darray, hmap |
+| [Box2D v3](https://github.com/erincatto/box2d) | `b2BitSet`, `b2Array` | bitset, darray |
+
+**flecs' sparse set is the only external comparison spset has.** Only the
+amalgamated `flecs.c` is compiled, and it is the dominant cost of a perf build
+once fetched (~2.5 MB of C).
+
+Box2D's `b2BitSet` is near-identical to `bx_bitset` — same `uint64` blocks, same
+`blockCapacity`/`blockCount`, same operation set. `b2Array` is the same idea as
+`darray` down to the constants: an inline capacity check plus a typed store,
+growing 2x from an initial 8. Only `src/bitset.c` and the header-only
+`container.h` are compiled, against a shim `core.h` that `fetch.sh` writes.
+`b2HashSet` is left out — it stores `uint64` keys with no values and exists to
+track shape pairs, so it is not a map comparison.
+
+The shim's `b2GrowAlloc` allocates, copies and frees rather than calling
+`realloc`, matching what Box2D actually does. That detail is load-bearing:
+`bx_darray_reserve` does the same, and substituting `realloc` would hand Box2D
+an advantage the real engine does not have.
+
+⚠️ **`flecs_map` rows are not like-for-like.** `ecs_map_t` accepts no hash
+callback, so it is the one table that cannot be given the shared mixer. It
+applies Fibonacci hashing, which spreads consecutive integers near-perfectly —
+and this suite's keys are `1..n` shuffled, i.e. consecutive. Measured directly:
+**2.4 ns/lookup on sequential keys against 8.6 ns on scattered keys.** Those
+rows describe a table plus a hash on a favourable workload.
+
 `std::unordered_map` and `std::vector` are also benchmarked and need no fetch —
 only a C++ compiler. `std::unordered_map` is node-based separate chaining
 because the standard mandates reference stability and a bucket interface, so

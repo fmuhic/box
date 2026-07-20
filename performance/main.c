@@ -100,6 +100,12 @@ int main(int argc, char** argv)
 #ifdef BOX_PERF_HAS_UNORDERED_DENSE
     fprintf(stderr, ", ankerl_dense");
 #endif
+#ifdef BOX_PERF_HAS_FLECS
+    fprintf(stderr, ", flecs");
+#endif
+#ifdef BOX_PERF_HAS_BOX2D
+    fprintf(stderr, ", box2d");
+#endif
 #ifdef BOX_PERF_CXX_ENABLED
     fprintf(stderr, ", std::unordered_map, std::vector");
 #endif
@@ -111,6 +117,8 @@ int main(int argc, char** argv)
 
     bx_bench_register_hmap();
     bx_bench_register_stc();
+    bx_bench_register_flecs();
+    bx_bench_register_box2d();
     bx_bench_register_cpp();
     bx_bench_register_spset();
     bx_bench_register_darray();

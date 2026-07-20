@@ -30,6 +30,8 @@ void bx_bench_register_darray(void);
 void bx_bench_register_spset(void);
 void bx_bench_register_bitset(void);
 void bx_bench_register_stc(void);
+void bx_bench_register_flecs(void);
+void bx_bench_register_box2d(void);
 // Defined in bench_cpp.cpp. Compiled only when a C++ compiler and the C++
 // headers are both available; a no-op stub stands in otherwise.
 void bx_bench_register_cpp(void);

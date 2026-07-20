@@ -66,6 +66,9 @@ dkms.conf
 CLAUDE.md
 
 
-# performance suite: downloaded, not vendored
-performance/third_party/*.h
+# performance suite: downloaded by fetch.sh, not vendored. Ignore everything in
+# third_party except the fetch script itself -- the previous `*.h` rule missed
+# flecs.c and the stc/ and box2d/ subdirectories.
+performance/third_party/*
+!performance/third_party/fetch.sh
 build-perf/

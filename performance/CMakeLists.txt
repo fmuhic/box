@@ -26,6 +26,8 @@ add_executable(box_perf
     bench_spset.c
     bench_bitset.c
     bench_stc.c
+    bench_flecs.c
+    bench_box2d.c
 )
 
 if(BOX_PERF_CXX)
@@ -50,7 +52,7 @@ target_compile_definitions(box_perf PRIVATE _POSIX_C_SOURCE=199309L)
 # Third-party headers are optional and are not vendored into the repository.
 # performance/third_party/fetch.sh downloads them; whatever is present gets
 # compiled in, and the suite still runs box-only when none are.
-foreach(dep khash:KHASH:khash.h verstable:VERSTABLE:verstable.h stb_ds:STB_DS:stb_ds.h stc:STC:stc/hmap.h)
+foreach(dep khash:KHASH:khash.h verstable:VERSTABLE:verstable.h stb_ds:STB_DS:stb_ds.h stc:STC:stc/hmap.h flecs:FLECS:flecs.h box2d:BOX2D:box2d/bitset.h)
     string(REPLACE ":" ";" dep_parts ${dep})
     list(GET dep_parts 0 dep_name)
     list(GET dep_parts 1 dep_macro)
@@ -65,6 +67,22 @@ endforeach()
 
 if(EXISTS ${BOX_PERF_THIRD_PARTY_DIR})
     target_include_directories(box_perf PRIVATE ${BOX_PERF_THIRD_PARTY_DIR})
+endif()
+
+# flecs ships as one big .c. It needs GNU extensions and its own include dir,
+# and it is the main cost of a perf build once fetched.
+if(EXISTS ${BOX_PERF_THIRD_PARTY_DIR}/flecs.c)
+    target_sources(box_perf PRIVATE ${BOX_PERF_THIRD_PARTY_DIR}/flecs.c)
+    set_source_files_properties(${BOX_PERF_THIRD_PARTY_DIR}/flecs.c
+        PROPERTIES COMPILE_OPTIONS "-std=gnu99;-w;-U_POSIX_C_SOURCE;-D_GNU_SOURCE")
+    find_package(Threads REQUIRED)
+    target_link_libraries(box_perf PRIVATE Threads::Threads m)
+endif()
+
+# Box2D: just the bitset, compiled against the shim core.h fetch.sh wrote.
+if(EXISTS ${BOX_PERF_THIRD_PARTY_DIR}/box2d/bitset.c)
+    target_sources(box_perf PRIVATE ${BOX_PERF_THIRD_PARTY_DIR}/box2d/bitset.c)
+    target_include_directories(box_perf PRIVATE ${BOX_PERF_THIRD_PARTY_DIR}/box2d)
 endif()
 
 # stb_ds needs its implementation compiled exactly once.

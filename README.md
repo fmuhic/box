@@ -360,7 +360,8 @@ bitset: 2 set, bit 70 = 1
 Builds a separate Release tree in `build-perf/` at `-O3 -march=native` and pins
 to one core. The normal build is unaffected.
 
-To also compare against khash, Verstable, STC, stb_ds and ankerl::unordered_dense:
+To also compare against khash, Verstable, STC, stb_ds, ankerl::unordered_dense,
+flecs (ECS) and Box2D:
 
 ```sh
 ./performance/third_party/fetch.sh
