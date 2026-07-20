@@ -94,6 +94,15 @@ int main(int argc, char** argv)
 #ifdef BOX_PERF_HAS_STB_DS
     fprintf(stderr, ", stb_ds");
 #endif
+#ifdef BOX_PERF_HAS_STC
+    fprintf(stderr, ", stc");
+#endif
+#ifdef BOX_PERF_HAS_UNORDERED_DENSE
+    fprintf(stderr, ", ankerl_dense");
+#endif
+#ifdef BOX_PERF_CXX_ENABLED
+    fprintf(stderr, ", std::unordered_map, std::vector");
+#endif
 #if !defined(BOX_PERF_HAS_KHASH) && !defined(BOX_PERF_HAS_VERSTABLE) && \
     !defined(BOX_PERF_HAS_STB_DS)
     fprintf(stderr, "  (no third-party libraries found: run performance/third_party/fetch.sh)");
@@ -101,6 +110,8 @@ int main(int argc, char** argv)
     fprintf(stderr, "\n");
 
     bx_bench_register_hmap();
+    bx_bench_register_stc();
+    bx_bench_register_cpp();
     bx_bench_register_spset();
     bx_bench_register_darray();
     bx_bench_register_bitset();

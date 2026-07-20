@@ -31,3 +31,4 @@ Cpp11BracedListStyle: false
 SpacesInParentheses: false
 MaxEmptyLinesToKeep: 1
 KeepEmptyLinesAtTheStartOfBlocks: false
+IndentExternBlock: NoIndent

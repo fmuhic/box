@@ -30,14 +30,42 @@ them and prints what is missing. To pull them in:
 That downloads three single-header libraries into `performance/third_party/`,
 which is gitignored:
 
-| Library | Design | License |
-|---|---|---|
-| [khash](https://github.com/attractivechaos/klib) | quadratic probing, 2-bit metadata, tombstones | MIT |
-| [Verstable](https://github.com/JacksonAllan/Verstable) | in-table chaining, 16-bit metadata, no tombstones | MIT |
-| [stb_ds](https://github.com/nothings/stb) | open addressing, separate key/value storage | public domain / MIT |
+| Library | Lang | Design | License |
+|---|---|---|---|
+| [khash](https://github.com/attractivechaos/klib) | C | quadratic probing, 2-bit metadata, tombstones | MIT |
+| [Verstable](https://github.com/JacksonAllan/Verstable) | C | in-table chaining, 16-bit metadata, no tombstones | MIT |
+| [STC](https://github.com/stclib/STC) | C | **Robin Hood**, 8-bit metadata, 0.85 load, 1.5x growth | MIT |
+| [stb_ds](https://github.com/nothings/stb) | C | open addressing, separate key/value storage | public domain / MIT |
+| [ankerl::unordered_dense](https://github.com/martinus/unordered_dense) | C++17 | **Robin Hood** + backward shift, buckets hold an index into a dense vector | MIT |
+
+`std::unordered_map` and `std::vector` are also benchmarked and need no fetch —
+only a C++ compiler. `std::unordered_map` is node-based separate chaining
+because the standard mandates reference stability and a bucket interface, so
+every element is a separate allocation; it is the slowest map design here by
+construction, and it is included because it is the default most code reaches
+for.
 
 CMake detects whichever headers are present and compiles in only those
 comparisons, so a partial fetch works fine.
+
+**STC and ankerl are the load-bearing comparisons.** Both use Robin Hood, the
+same scheme as box, so they separate two things the other libraries conflate: a
+gap against them is a gap in box's implementation, while a gap they *share*
+against Verstable is a property of Robin Hood itself.
+
+### The C++ comparisons
+
+`performance/CMakeLists.txt` calls `enable_language(CXX)` itself rather than the
+root project declaring it. Since the perf directory is only added when
+`BOX_BUILD_PERF=ON`, a normal `cmake -B build` never probes for a C++ compiler —
+the library stays C99 with no C++ toolchain requirement.
+
+C++ is enabled whenever a compiler exists, which is enough for the `std`
+containers; `ankerl::unordered_dense` is an extra layered on top when its header
+is present. With no C++ compiler at all, a stub replaces the C++ translation
+unit and everything else still builds.
+
+`bench.h` is wrapped in `extern "C"` so the one C++ file can share the harness.
 
 ## Getting numbers you can trust
 

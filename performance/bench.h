@@ -4,6 +4,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// The C++ comparisons (see bench_cpp.cpp) include this header, so everything
+// declared here has to keep C linkage.
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // A benchmark case times one operation over `n` elements and returns the
 // seconds spent inside the measured region only. Setup and teardown happen
 // inside the case but outside its timer, so allocation and key generation never
@@ -22,6 +29,10 @@ void bx_bench_register_hmap(void);
 void bx_bench_register_darray(void);
 void bx_bench_register_spset(void);
 void bx_bench_register_bitset(void);
+void bx_bench_register_stc(void);
+// Defined in bench_cpp.cpp. Compiled only when a C++ compiler and the C++
+// headers are both available; a no-op stub stands in otherwise.
+void bx_bench_register_cpp(void);
 
 typedef struct bx_bench_config
 {
@@ -89,3 +100,7 @@ static inline bool bx_bench_eq_u32(uint32_t a, uint32_t b)
 {
     return a == b;
 }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

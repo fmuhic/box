@@ -360,13 +360,15 @@ bitset: 2 set, bit 70 = 1
 Builds a separate Release tree in `build-perf/` at `-O3 -march=native` and pins
 to one core. The normal build is unaffected.
 
-To also compare against khash, Verstable and stb_ds:
+To also compare against khash, Verstable, STC, stb_ds and ankerl::unordered_dense:
 
 ```sh
 ./performance/third_party/fetch.sh
 ```
 
 They are downloaded, not vendored, and the suite runs box-only without them.
+The one C++ comparison enables C++ inside the perf module only — the library
+itself stays C99 and the normal build never looks for a C++ compiler.
 
 Check the `spread` column before trusting a result — above ~20% the ranking is
 noise. `perf.sh` warns when CPU frequency scaling is the reason.

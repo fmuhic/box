@@ -162,7 +162,60 @@ typedef struct bx_bench_result
     const bx_bench_entry* entry;
     bx_bench_stats stats;
     double ns_per_op;
+    // Ranks by first appearance, so the report groups every implementation of
+    // an operation together no matter what order they registered in.
+    uint32_t group_rank;
+    uint32_t op_rank;
+    uint32_t order;
 } bx_bench_result;
+
+static int cmp_result(const void* a, const void* b)
+{
+    const bx_bench_result* x = (const bx_bench_result*)a;
+    const bx_bench_result* y = (const bx_bench_result*)b;
+    if (x->group_rank != y->group_rank)
+    {
+        return (x->group_rank > y->group_rank) - (x->group_rank < y->group_rank);
+    }
+    if (x->op_rank != y->op_rank)
+    {
+        return (x->op_rank > y->op_rank) - (x->op_rank < y->op_rank);
+    }
+    return (x->order > y->order) - (x->order < y->order);
+}
+
+// Rank of the first result sharing this group (and op, when `op` is non-NULL).
+static uint32_t rank_of(const bx_bench_result* results, uint32_t count, const char* group,
+                        const char* op)
+{
+    uint32_t rank = 0;
+    for (uint32_t i = 0; i < count; i++)
+    {
+        const bx_bench_entry* e = results[i].entry;
+        bool same = (op == NULL) ? (strcmp(e->group, group) == 0)
+                                 : (strcmp(e->group, group) == 0 && strcmp(e->op, op) == 0);
+        if (same)
+        {
+            return rank;
+        }
+        bool counted = false;
+        for (uint32_t j = 0; j < i; j++)
+        {
+            const bx_bench_entry* p = results[j].entry;
+            if (op == NULL ? (strcmp(p->group, e->group) == 0)
+                           : (strcmp(p->group, e->group) == 0 && strcmp(p->op, e->op) == 0))
+            {
+                counted = true;
+                break;
+            }
+        }
+        if (!counted)
+        {
+            rank++;
+        }
+    }
+    return rank;
+}
 
 static bool matches(const bx_bench_entry* e, const char* filter)
 {
@@ -247,6 +300,15 @@ void bx_bench_run_all(const bx_bench_config* cfg)
     {
         fprintf(stderr, "\r%-40s\r", "");
     }
+
+    for (uint32_t i = 0; i < result_count; i++)
+    {
+        const bx_bench_entry* e = results[i].entry;
+        results[i].group_rank = rank_of(results, result_count, e->group, NULL);
+        results[i].op_rank = rank_of(results, result_count, e->group, e->op);
+        results[i].order = i;
+    }
+    qsort(results, result_count, sizeof(bx_bench_result), cmp_result);
 
     if (cfg->csv)
     {

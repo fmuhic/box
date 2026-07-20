@@ -37,6 +37,34 @@ fetch "stb_ds" \
       "https://raw.githubusercontent.com/nothings/stb/master/stb_ds.h" \
       "stb_ds.h"
 
+# C++17. Only compiled if a C++ compiler is available; see performance/CMakeLists.txt.
+# Ships as two headers, not one: unordered_dense.h includes stl.h as a sibling.
+fetch "ankerl::unordered_dense" \
+      "https://raw.githubusercontent.com/martinus/unordered_dense/main/include/ankerl/unordered_dense.h" \
+      "unordered_dense.h"
+fetch "ankerl::unordered_dense (stl.h)" \
+      "https://raw.githubusercontent.com/martinus/unordered_dense/main/include/ankerl/stl.h" \
+      "stl.h"
+
+# STC ships a directory of headers rather than one file, so it arrives as a
+# tarball and only include/stc is kept.
+if [ -d "stc" ]; then
+    echo "  STC: already present, skipping"
+else
+    echo "  STC: downloading"
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "https://github.com/stclib/STC/archive/refs/heads/main.tar.gz" \
+             -o "$tmp/stc.tar.gz"
+    else
+        wget -q "https://github.com/stclib/STC/archive/refs/heads/main.tar.gz" \
+             -O "$tmp/stc.tar.gz"
+    fi
+    tar -xzf "$tmp/stc.tar.gz" -C "$tmp"
+    mv "$tmp"/STC-main/include/stc ./stc
+fi
+
 echo
 echo "Done. Re-run cmake so the build picks them up:"
 echo "  ./perf.sh"
